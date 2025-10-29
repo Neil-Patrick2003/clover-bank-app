@@ -4,17 +4,20 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const getApiBase = () => {
-  if (Platform.OS === 'web')     return 'http://localhost/api/v1';
-  if (Platform.OS === 'android') return 'http://192.168.18.93/api/v1';
-  return 'http://localhost/api/v1'; // iOS simulator
+  if (Platform.OS === 'web')     return 'http://localhost:8000/api/v1';
+  if (Platform.OS === 'android') return 'http://192.168.18.93:8000/api/v1';
+  return 'http://localhost:8000/api/v1'; // iOS simulator
 };
 
 export const api = axios.create({
   baseURL: getApiBase(),
   timeout: 15000,
-  headers: { Accept: 'application/json' },
+  headers: {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true, // Important for cookies/sessions
 });
-
 
 // 🔒 Attach token to every request
 api.interceptors.request.use(async (config) => {
@@ -28,6 +31,19 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error('API Error:', error?.response?.data || error.message);
+    return Promise.reject(error);
+  }
+);
+
+// In client.js
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Handle unauthorized error
+      console.log('Unauthorized, logging out...');
+      // Add your logout logic here
+    }
     return Promise.reject(error);
   }
 );
