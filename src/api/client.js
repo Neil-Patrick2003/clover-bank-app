@@ -35,15 +35,5 @@ api.interceptors.response.use(
   }
 );
 
-// In client.js
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized error
-      console.log('Unauthorized, logging out...');
-      // Add your logout logic here
-    }
-    return Promise.reject(error);
-  }
-);
+
+
