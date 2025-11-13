@@ -4,23 +4,15 @@ import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Card, Button, Input } from '../../components/ui';
 
-// You'll need an actual image file. Use the path you set up.
 const BACKGROUND_IMAGE = require('../../../assets/background_image.png'); 
 
-// --- DUMMY SELECTOR OPTIONS ---
 const KYC_LEVELS = ['Basic', 'Standard', 'Enhanced'];
 const ID_TYPES = ['Passport', 'National ID', 'Driver\'s License'];
 
-// --- CUSTOM SELECT COMPONENT (SIMULATED) ---
-// This assumes your custom UI library provides a <Select> component 
-// that renders a dropdown/picker styled like an Input component.
+
 const Select = ({ label, value, options, onValueChange, t }) => {
-    // NOTE: In your production code, this component should internally render 
-    // a dropdown or picker modal using the provided `options` and calling 
-    // `onValueChange` with the new selection.
-    
-    // We keep the Alert mock here for functional demonstration:
-    const handlePress = () => {
+ 
+        const handlePress = () => {
         Alert.alert(
             label,
             "Select an option:",
@@ -33,7 +25,6 @@ const Select = ({ label, value, options, onValueChange, t }) => {
 
     return (
         <TouchableOpacity onPress={handlePress} style={{ width: '100%' }}>
-            {/* The visual appearance mimics the glass input style */}
             <Input
                 placeholder={label}
                 value={value}
@@ -45,7 +36,6 @@ const Select = ({ label, value, options, onValueChange, t }) => {
                     backgroundColor: 'rgba(255, 255, 255, 0.1)',
                 }}
                 inputStyle={{ color: 'white' }}
-                // You might need to add a dropdown icon here for better UX
             />
         </TouchableOpacity>
     );
@@ -62,36 +52,29 @@ export default function KycScreen({ route, navigation }) {
   const [idExpiry, setIdExpiry] = useState('');
   const [msg, setMsg] = useState('');
 
-  // In KycScreen.js, update the save function:
 
 const save = async () => {
     setMsg('');
     try {
       
-      // 1. Standardize and simplify the id_type value to match the ENUM
       const apiIdType = idType.toLowerCase()
-        // Replace 'driver's license' with the exact ENUM value 'driver_license'
         .replace("driver's license", 'driver_license') 
-        // Remove apostrophes, then replace remaining spaces with underscores
-        .replace(/[']/g, '') // Remove apostrophes globally (just in case)
+        .replace(/[']/g, '') 
         .replace(/\s/g, '_'); 
 
       await api.post('/applications/kyc', { 
-          // Ensure kyc_level is also lowercase
           kyc_level: kycLevel.toLowerCase(), 
-          id_type: apiIdType, // <-- Now this matches 'driver_license'
+          id_type: apiIdType, 
           id_number: idNumber, 
           id_expiry: idExpiry || null 
       });
       
       navigation.navigate('RequestedAccounts', { applicationId });
     } catch (e) { 
-        // Display the actual error message received from the API
         setMsg('❌ ' + (e?.response?.data?.message || 'Failed to save KYC')); 
     }
 };
 
-// Also, verify your selection options match the user-friendly format:
 const ID_TYPES = ['Passport', 'National ID', 'Driver\'s License'];
 
   return (
