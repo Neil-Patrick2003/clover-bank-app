@@ -12,7 +12,6 @@ import { useTheme } from "../../theme/ThemeProvider";
 import { Card, Button } from "../../components/ui";
 import { Ionicons } from "@expo/vector-icons";
 
-// --- New Component for Styled Account Card ---
 
 // Define the style sheet for the custom card
 const cardStyles = StyleSheet.create({
@@ -173,7 +172,7 @@ export default function AccountDetailScreen({ route }) {
   const [showBalance, setShowBalance] = useState(true);
 
   // Helper for formatting currency
-  const currencyFormatter = useCallback((amt: number | string, currency: string) => {
+  const currencyFormatter = useCallback((amt, currency) => {
     const num = Number(amt) || 0;
     try {
       return new Intl.NumberFormat(undefined, {
