@@ -9,48 +9,51 @@ export default function BootstrapScreen({ navigation }) {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get('/applications/status');
-
-        // 1) Already has open accounts -> Home
-        if ((data.open_accounts ?? 0) > 0) {
+        console.log('BootstrapScreen: Checking user accounts...');
+        
+        // Check if user has existing accounts first
+        const { data: accounts } = await api.get('/accounts');
+        console.log('BootstrapScreen: User accounts:', accounts);
+        
+        // If user has accounts, go to Home
+        if (accounts && accounts.length > 0) {
+          console.log('BootstrapScreen: User has accounts, navigating to Home');
           navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
           return;
         }
 
-        // 2) Has an application?
-        const app = data.application;
-        if (!app) {
-          // No app yet -> start
-          navigation.replace('CreateApplication');
-          return;
-        }
-
-        // 2a) Draft
-        if (app.status === 'draft') {
-          if (data.has_kyc) {
-            // Skip KYC if already present
-            navigation.replace('RequestedAccounts', { applicationId: app.id });
-          } else {
-            navigation.replace('KYC', { applicationId: app.id });
+        // If no accounts, check for applications
+        try {
+          const { data: applications } = await api.get('/applications');
+          console.log('BootstrapScreen: User applications:', applications);
+          
+          if (applications && applications.length > 0) {
+            const app = applications[0]; // Get the latest application
+            
+            // Handle different application statuses
+            if (app.status === 'draft') {
+              navigation.replace('KYC', { applicationId: app.id });
+              return;
+            } else if (app.status === 'submitted' || app.status === 'in_review') {
+              navigation.replace('WaitingReview', { applicationId: app.id });
+              return;
+            } else if (app.status === 'approved') {
+              // Approved but no accounts yet - wait for account creation
+              navigation.replace('WaitingReview', { applicationId: app.id });
+              return;
+            }
           }
-          return;
+        } catch (appError) {
+          console.log('BootstrapScreen: No applications found or error:', appError.response?.status);
         }
 
-        // 2b) Submitted/In review
-        if (app.status === 'submitted' || app.status === 'in_review') {
-          navigation.replace('WaitingReview', { applicationId: app.id });
-          return;
-        }
-
-        // 2c) Approved but no accounts yet (race) -> poll via WaitingReview
-        if (app.status === 'approved' && (data.open_accounts ?? 0) === 0) {
-          navigation.replace('WaitingReview', { applicationId: app.id });
-          return;
-        }
-
-        // Fallback
+        // No accounts and no applications - start new application
+        console.log('BootstrapScreen: No accounts or applications, starting new application');
         navigation.replace('CreateApplication');
-      } catch {
+        
+      } catch (error) {
+        console.error('BootstrapScreen: Error checking accounts:', error.response?.data || error.message);
+        // If accounts API fails, still try to start application process
         navigation.replace('CreateApplication');
       }
     })();
