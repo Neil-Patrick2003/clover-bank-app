@@ -4,9 +4,9 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const getApiBase = () => {
-  if (Platform.OS === 'web')     return 'http://localhost/api/v1';
-  if (Platform.OS === 'android') return 'http://10.0.2.2/api/v1';
-  return 'http://localhost/api/v1'; // iOS simulator
+  if (Platform.OS === 'web')     return 'http://192.168.0.104/api/v1';
+  if (Platform.OS === 'android') return 'http://192.168.0.104/api/v1';
+  return 'http://192.168.0.104/api/v1'; // iOS simulator
 };
 
 export const api = axios.create({
