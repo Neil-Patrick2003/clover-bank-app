@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -9,42 +9,122 @@ import {
   TextInput,
   StatusBar,
   Animated,
-  ScrollView, // Added for filter pills
+  ScrollView,
+  StyleSheet,
 } from 'react-native';
+import { AuthContext } from '../../context/AuthContext'; 
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Card } from '../../components/ui';
-// Assuming a set of icons is available (e.g., react-native-vector-icons)
-// For this example, I'll use placeholders but a real app would import them.
-// import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 type Account = {
   id: number | string;
   account_number: string;
   balance: number | string;
-  currency: string;       // e.g., 'PHP', 'USD'
+  currency: string;
   status: 'active' | 'inactive' | 'frozen' | 'pending' | string;
   type?: 'savings' | 'checking' | 'time' | string;
-  alias?: string;         // optional friendly name
+  alias?: string;
 };
 
 type AccountTypeFilter = 'all' | 'savings' | 'checking' | 'time';
 
+const BankCardTotal = ({ primaryBalance, totalBalanceByCurrency, currencyFormatter, t }) => {
+  const [isBalanceHidden, setIsBalanceHidden] = useState(false);
+  const [showTotals, setShowTotals] = useState(false); 
+
+  const totalAmount = primaryBalance ? primaryBalance[1] : 0;
+  const primaryCurrency = primaryBalance ? primaryBalance[0] : 'PHP';
+  const displayAmount = isBalanceHidden ? '******' : currencyFormatter(totalAmount, primaryCurrency);
+  const isZeroOrNegative = totalAmount <= 0;
+
+  const gradientColors = ['#00B367', '#00CC7A', '#33E699']; 
+
+  return (
+    <Card style={cardStyles.totalCard}>
+      <View style={[cardStyles.bankCardGradientContainer, {
+          backgroundColor: gradientColors[0], 
+        }]}>
+        
+        <View style={[cardStyles.bubble, { top: -20, left: -30, height: 80, width: 80, opacity: 0.15 }]} />
+        <View style={[cardStyles.bubble, { bottom: -10, right: 10, height: 120, width: 120, opacity: 0.1 }]} />
+        <View style={[cardStyles.bubble, { top: '30%', left: '40%', height: 50, width: 50, opacity: 0.05 }]} />
+
+
+        <View style={cardStyles.cardContentWrapper}>
+            <View style={cardStyles.cardRow}>
+              <View style={cardStyles.bankLogoPlaceholder}>
+                <Text style={cardStyles.bankLogoText}>BANK</Text>
+              </View>
+              <View style={cardStyles.chipPlaceholder} />
+            </View>
+
+            <Text style={cardStyles.cardNumber}>
+              **** **** **** 4242
+            </Text>
+            
+            <View style={[cardStyles.cardRow, { marginTop: 15 }]}>
+              <View>
+                <Text style={cardStyles.balanceLabel}>Current Balance</Text>
+                {isZeroOrNegative && !isBalanceHidden ? (
+                    <Text style={cardStyles.primaryBalanceText}>ZERO BALANCE</Text>
+                ) : (
+                    <Text style={cardStyles.primaryBalanceText}>
+                        {displayAmount}
+                    </Text>
+                )}
+              </View>
+
+              <Pressable 
+                onPress={() => setIsBalanceHidden(!isBalanceHidden)} 
+                style={cardStyles.toggleButton}
+                accessibilityLabel={isBalanceHidden ? "Show balance" : "Hide balance"}
+              >
+                <Text style={cardStyles.toggleIcon}>{isBalanceHidden ? 'SHOW' : 'HIDE'}</Text>
+              </Pressable>
+            </View>
+        </View>
+      </View>
+
+      {totalBalanceByCurrency.length > 1 && totalAmount > 0 && (
+        <View style={cardStyles.footerContainer}>
+          <Pressable onPress={() => setShowTotals(!showTotals)} style={cardStyles.footerToggle}>
+            <Text style={cardStyles.footerToggleText}>
+              {showTotals ? 'HIDE SECONDARY BALANCES' : `VIEW +${totalBalanceByCurrency.length - 1} OTHER BALANCE${totalBalanceByCurrency.length > 2 ? 'S' : ''}`}
+            </Text>
+          </Pressable>
+
+          {showTotals && totalBalanceByCurrency
+            .filter(([cur]) => cur !== primaryCurrency)
+            .map(([cur, amt]) => (
+              <View key={cur} style={cardStyles.secondaryBalanceItem}>
+                <Text style={cardStyles.secondaryBalanceCurrency}>{cur}</Text>
+                <Text style={cardStyles.secondaryBalanceAmount}>
+                  {currencyFormatter(amt, cur)}
+                </Text>
+              </View>
+            ))}
+        </View>
+      )}
+    </Card>
+  );
+};
+
+
 export default function DashboardScreen({ navigation }) {
   const t = useTheme();
+  const { user, booting } = useContext(AuthContext); 
+  
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<AccountTypeFilter>('all');
-  const [showTotals, setShowTotals] = useState(false); // New state for collapsing totals
 
   const mounted = useRef(true);
 
-  // ---- Helpers -------------------------------------------------------------
   const currencyFormatter = useCallback((amt: number, currency: string) => {
-    // Fallback to currency if Intl can’t find it
     try {
       return new Intl.NumberFormat(undefined, {
         style: 'currency',
@@ -53,29 +133,28 @@ export default function DashboardScreen({ navigation }) {
         maximumFractionDigits: 2
       }).format(amt);
     } catch {
-      return `${currency} ${amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      return `${currency} ${Number(amt || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
   }, []);
 
   const statusChipStyle = useCallback((status: string) => {
     const map: Record<string, { bg: string; fg: string; label: string }> = {
-      active:   { bg: t.colors.successBg ?? '#E6F7EE', fg: t.colors.success ?? '#0E7A4D', label: 'Active' },
-      pending:  { bg: t.colors.warnBg ?? '#FFF7E6',   fg: t.colors.warn ?? '#A86700',     label: 'Pending' },
-      frozen:   { bg: t.colors.dangerBg ?? '#FDECEC', fg: t.colors.danger ?? '#B3261E',   label: 'Frozen'  },
-      inactive: { bg: t.colors.mutedBg ?? '#ECEFF3',  fg: t.colors.sub ?? '#566173',      label: 'Inactive'},
+      active:   { bg: '#E6F7EE', fg: '#0E7A4D', label: 'Active' },
+      pending:  { bg: '#FFF7E6', fg: '#A86700', label: 'Pending' },
+      frozen:   { bg: '#FDECEC', fg: '#B3261E', label: 'Frozen'  },
+      inactive: { bg: '#ECEFF3', fg: '#566173', label: 'Inactive'},
     };
-    const defaultStyle = { bg: t.colors.mutedBg ?? '#ECEFF3', fg: t.colors.sub ?? '#566173', label: status };
+    const defaultStyle = { bg: '#ECEFF3', fg: '#566173', label: status };
     return map[status.toLowerCase()] ?? defaultStyle;
-  }, [t.colors]);
-  
-  // New helper for account card visual
-  const getAccountIconColor = useCallback((type: string) => {
+  }, []);
+
+  const getAccountAccentColor = useCallback((type: string) => {
     const map: Record<string, string> = {
       savings: t.colors.primary,
       checking: t.colors.success,
       time: t.colors.warn,
     };
-    return map[type.toLowerCase()] ?? t.colors.sub; // Fallback color
+    return map[type.toLowerCase()] ?? t.colors.sub;
   }, [t.colors]);
 
   const load = useCallback(async () => {
@@ -114,7 +193,6 @@ export default function DashboardScreen({ navigation }) {
     return () => { mounted.current = false; };
   }, [load]);
 
-  // ---- Derived data --------------------------------------------------------
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return accounts
@@ -130,52 +208,48 @@ export default function DashboardScreen({ navigation }) {
         ].filter(Boolean).join(' ').toLowerCase();
         return hay.includes(q);
       })
-      .sort((a, b) => (a.status === 'active' ? -1 : b.status === 'active' ? 1 : 0)); // Prioritize active accounts
+      .sort((a, b) => (a.status === 'active' ? -1 : b.status === 'active' ? 1 : 0));
   }, [accounts, query, typeFilter]);
 
   const totalBalanceByCurrency = useMemo(() => {
-    // Group totals per currency (uses ALL accounts, not just filtered, for a true total view)
     const map = new Map<string, number>();
     for (const a of accounts) {
       const cur = (a.currency || 'PHP').toUpperCase();
       const val = Number(a.balance) || 0;
       map.set(cur, (map.get(cur) ?? 0) + val);
     }
-    return Array.from(map.entries()); // [ [ 'PHP', 12345 ], ...]
+    return Array.from(map.entries());
   }, [accounts]);
 
   const primaryBalance = totalBalanceByCurrency.length > 0 ? totalBalanceByCurrency[0] : null;
 
-  // ---- UI bits -------------------------------------------------------------
-  
-  // Custom Screen Header
-  const CustomHeader = () => (
-    <View style={{
-      paddingHorizontal: 20,
-      paddingTop: 12,
-      paddingBottom: 8,
-      backgroundColor: t.colors.bg,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    }}>
-      <View>
-        <Text style={{ fontSize: 14, color: t.colors.sub }}>Welcome back</Text>
-        <Text style={{ fontSize: 24, fontWeight: '900', color: t.colors.text }}>Your Dashboard</Text>
-      </View>
-      {/* Placeholder for Avatar/Settings Icon */}
-      <View style={{
-        height: 40, width: 40, borderRadius: 20,
-        backgroundColor: t.colors.primary ?? '#2563eb',
-        alignItems: 'center', justifyContent: 'center'
-      }}>
-        {/* Replace with actual Icon/Image */}
-        <Text style={{ color: 'white', fontWeight: 'bold' }}>JD</Text>
-      </View>
-    </View>
-  );
+  const CustomHeader = () => {
+    const greetingText = booting 
+      ? 'Loading profile...' 
+      : 'Welcome back';
+        
+    const mainTitle = user && user.username 
+      ? user.username 
+      : 'Your Dashboard';
 
-  const Skeleton = () => {
+    const initials = user && user.username 
+      ? user.username.charAt(0).toUpperCase() 
+      : 'JD';
+      
+    return (
+      <View style={styles.headerContainer}>
+        <View>
+          <Text style={styles.headerGreeting}>{greetingText}</Text>
+          <Text style={styles.headerTitle}>{mainTitle}</Text> 
+        </View>
+        <View style={styles.avatarPlaceholder}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+      </View>
+    );
+  };
+
+  const SkeletonCard = () => {
     const pulse = useRef(new Animated.Value(0.3)).current;
     useEffect(() => {
       const anim = Animated.loop(
@@ -188,71 +262,28 @@ export default function DashboardScreen({ navigation }) {
       return () => anim.stop();
     }, [pulse]);
     return (
-      <Card style={{ padding: 18, flexDirection: 'row', alignItems: 'center' }}>
-        <View style={{ width: 4, height: '100%', borderRadius: 2, backgroundColor: t.colors.skeleton ?? '#e5e7eb', marginRight: 15 }} />
-        <Animated.View style={{ opacity: pulse, gap: 10, flex: 1 }}>
-          <View style={{ height: 18, width: '70%', borderRadius: 9, backgroundColor: t.colors.skeleton ?? '#e5e7eb' }} />
-          <View style={{ height: 14, width: '40%', borderRadius: 7, backgroundColor: t.colors.skeleton ?? '#e5e7eb' }} />
+      <Card style={styles.skeletonCard}>
+        <View style={[styles.skeletonAccent, { backgroundColor: t.colors.skeleton ?? '#e5e7eb' }]} />
+        <Animated.View style={[{ opacity: pulse, gap: 10, flex: 1, paddingLeft: 10 }]}>
+          <View style={[styles.skeletonLine, { width: '70%', height: 18, backgroundColor: t.colors.skeleton ?? '#e5e7eb' }]} />
+          <View style={[styles.skeletonLine, { width: '40%', height: 14, backgroundColor: t.colors.skeleton ?? '#e5e7eb' }]} />
         </Animated.View>
       </Card>
     );
   };
 
   const ErrorBanner = () => (
-    <View style={{ padding: 16, borderRadius: 16, backgroundColor: t.colors.dangerBg ?? '#FDECEC', borderWidth: 1, borderColor: t.colors.danger ?? '#B3261E' }}>
-      <Text style={{ color: t.colors.danger ?? '#B3261E', fontWeight: '700', fontSize: 16 }}>Connection Error</Text>
-      <Text style={{ color: t.colors.danger ?? '#B3261E', marginTop: 4 }}>{error}</Text>
+    <View style={styles.errorBanner}>
+      <Text style={styles.errorTitle}>Error Loading Data</Text>
+      <Text style={styles.errorMessage}>{error}</Text>
       <Pressable
         onPress={load}
         accessibilityRole="button"
-        style={{ marginTop: 12, alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: t.colors.danger ?? '#B3261E' }}
+        style={[styles.errorButton, { backgroundColor: t.colors.danger ?? '#B3261E' }]}
       >
-        <Text style={{ color: 'white', fontWeight: '700' }}>Try Again</Text>
+        <Text style={styles.errorButtonText}>Try Again</Text>
       </Pressable>
     </View>
-  );
-
-  const HeaderTotal = () => (
-    <Card style={{ backgroundColor: t.colors.primary ?? '#2563eb', padding: 20 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: t.colors.onPrimary ?? '#fff', opacity: 0.8 }}>Total Available Balance</Text>
-      {
-        primaryBalance ? (
-          <View>
-            <Text style={{
-              fontSize: 32,
-              fontWeight: '900',
-              color: t.colors.onPrimary ?? '#fff',
-              marginTop: 4
-            }}>
-              {currencyFormatter(primaryBalance[1], primaryBalance[0])}
-            </Text>
-
-            {/* Collapsible details for other currencies */}
-            {totalBalanceByCurrency.length > 1 && (
-              <Pressable onPress={() => setShowTotals(!showTotals)} style={{ marginTop: 10 }}>
-                <Text style={{ color: t.colors.onPrimary ?? '#fff', fontWeight: '700', fontSize: 12 }}>
-                  {showTotals ? 'Hide other balances' : `+${totalBalanceByCurrency.length - 1} other balance${totalBalanceByCurrency.length > 2 ? 's' : ''}`}
-                </Text>
-              </Pressable>
-            )}
-
-            {/* Expanded currency list */}
-            {showTotals && totalBalanceByCurrency
-              .filter(([cur]) => cur !== primaryBalance[0])
-              .map(([cur, amt]) => (
-                <View key={cur} style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 4, borderTopWidth: 1, borderTopColor: t.colors.onPrimary + '40' }}>
-                  <Text style={{ color: t.colors.onPrimary ?? '#fff', opacity: 0.8, fontWeight: '600', fontSize: 14 }}>{cur}</Text>
-                  <Text style={{ color: t.colors.onPrimary ?? '#fff', fontWeight: '800', fontSize: 16 }}>
-                    {currencyFormatter(amt, cur)}
-                  </Text>
-                </View>
-              ))}
-          </View>
-        ) : (
-          <Text style={{ color: t.colors.onPrimary ?? '#fff', marginTop: 6 }}>No balances to show.</Text>
-        )
-      }
-    </Card>
   );
 
   const FilterPill = ({ label, value }: { label: string; value: AccountTypeFilter }) => {
@@ -261,18 +292,17 @@ export default function DashboardScreen({ navigation }) {
       <Pressable
         onPress={() => setTypeFilter(value)}
         accessibilityRole="button"
-        style={{
-          paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
-          backgroundColor: active ? (t.colors.primary ?? '#2563eb') : (t.colors.surface ?? '#fff'),
-          borderWidth: active ? 0 : 1,
-          borderColor: t.colors.border ?? '#E5E7EB',
-        }}
+        style={[
+          styles.filterPillBase,
+          active 
+            ? { backgroundColor: t.colors.primary ?? '#2563eb' }
+            : { backgroundColor: t.colors.surface ?? '#f9fafb', borderWidth: 1, borderColor: t.colors.border ?? '#E5E7EB' }
+        ]}
       >
-        <Text style={{
-          color: active ? (t.colors.onPrimary ?? '#fff') : (t.colors.text ?? '#111827'),
-          fontWeight: active ? '800' : '600',
-          fontSize: 14
-        }}>{label}</Text>
+        <Text style={[
+          styles.filterPillText,
+          { color: active ? t.colors.onPrimary ?? '#fff' : t.colors.text ?? '#111827' }
+        ]}>{label}</Text>
       </Pressable>
     );
   };
@@ -280,8 +310,8 @@ export default function DashboardScreen({ navigation }) {
   const renderItem = ({ item }: { item: Account }) => {
     const bal = Number(item.balance) || 0;
     const chip = statusChipStyle((item.status ?? '').toLowerCase());
-    const cardAccentColor = getAccountIconColor(item.type ?? 'default');
-    
+    const cardAccentColor = getAccountAccentColor(item.type ?? 'default');
+
     return (
       <Pressable
         key={item.id}
@@ -289,34 +319,31 @@ export default function DashboardScreen({ navigation }) {
         android_ripple={{ color: '#00000010' }}
         accessibilityRole="button"
       >
-        <Card style={{ padding: 18, flexDirection: 'row', alignItems: 'center' }}>
-          {/* Card Accent / Icon Placeholder */}
-          <View style={{ width: 4, height: '100%', position: 'absolute', left: 0, top: 0, backgroundColor: cardAccentColor, borderTopLeftRadius: 16, borderBottomLeftRadius: 16 }} />
-          
+        <Card style={styles.accountCard}>
+          <View style={[styles.cardAccentLine, { backgroundColor: cardAccentColor }]} />
+
           <View style={{ flex: 1, marginLeft: 8 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+            <View style={styles.cardHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 18, fontWeight: '800', color: t.colors.text }} numberOfLines={1}>
+                <Text style={styles.cardTitle} numberOfLines={1}>
                   {item.alias || `**** ${String(item.account_number).slice(-4)}`}
                 </Text>
-                <Text style={{ marginTop: 2, color: t.colors.sub, fontSize: 13 }}>
+                <Text style={styles.cardSubtitle}>
                   {(item.type || '').toString().toUpperCase()} • {String(item.account_number)}
                 </Text>
               </View>
-              {/* Status Chip (smaller) */}
-              <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, backgroundColor: chip.bg, alignSelf: 'center' }}>
-                <Text style={{ color: chip.fg, fontWeight: '700', fontSize: 11 }}>{chip.label}</Text>
+              <View style={[styles.statusChip, { backgroundColor: chip.bg }]}>
+                <Text style={[styles.statusChipText, { color: chip.fg }]}>{chip.label}</Text>
               </View>
             </View>
 
-            <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: t.colors.border + '50', paddingTop: 8 }}>
-              <Text style={{ color: t.colors.sub, fontWeight: '600' }}>Balance</Text>
+            <View style={styles.cardFooter}>
+              <Text style={styles.cardFooterLabel}>Balance</Text>
               <Text
-                style={{
-                  fontSize: 20,
-                  fontWeight: '900',
-                  color: bal >= 0 ? (t.colors.text ?? '#111827') : (t.colors.danger ?? '#B3261E')
-                }}
+                style={[
+                  styles.cardFooterAmount,
+                  { color: bal >= 0 ? (t.colors.text ?? '#111827') : (t.colors.danger ?? '#B3261E') }
+                ]}
               >
                 {currencyFormatter(bal, (item.currency || 'PHP').toUpperCase())}
               </Text>
@@ -328,23 +355,23 @@ export default function DashboardScreen({ navigation }) {
   };
 
   const EmptyState = () => (
-    <Card style={{ padding: 20, backgroundColor: t.colors.surface ?? '#fff' }}>
-      <Text style={{ fontSize: 18, fontWeight: '800', color: t.colors.text, marginBottom: 8 }}>All Set!</Text>
-      <Text style={{ color: t.colors.sub, fontSize: 14 }}>
+    <Card style={styles.emptyCard}>
+      <Text style={styles.emptyTitle}>No Accounts Found</Text>
+      <Text style={styles.emptyMessage}>
         It looks like you don’t have any accounts that match your current filters.
       </Text>
       {
         !accounts.length && (
           <>
-            <Text style={{ color: t.colors.sub, fontSize: 14, marginTop: 4 }}>
-              If you’re ready, you can open a new account below.
+            <Text style={styles.emptyMessageSub}>
+              You can open a new account to get started.
             </Text>
             <Pressable
               onPress={() => navigation.navigate('OpenAccount')}
               accessibilityRole="button"
-              style={{ marginTop: 16, alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: t.colors.primary }}
+              style={[styles.emptyButton, { backgroundColor: t.colors.primary }]}
             >
-              <Text style={{ color: t.colors.onPrimary ?? '#fff', fontWeight: '800' }}>Open New Account</Text>
+              <Text style={styles.emptyButtonText}>Open New Account</Text>
             </Pressable>
           </>
         )
@@ -354,63 +381,54 @@ export default function DashboardScreen({ navigation }) {
           <Pressable
             onPress={() => { setQuery(''); setTypeFilter('all'); }}
             accessibilityRole="button"
-            style={{ marginTop: 16, alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: t.colors.chipBg ?? '#eef2f7' }}
+            style={[styles.clearFilterButton, { backgroundColor: t.colors.chipBg ?? '#eef2f7' }]}
           >
-            <Text style={{ color: t.colors.text, fontWeight: '700' }}>Clear Filters</Text>
+            <Text style={[styles.clearFilterText, { color: t.colors.text }]}>Clear Filters</Text>
           </Pressable>
         )
       }
     </Card>
   );
 
-  // ---- Render --------------------------------------------------------------
   return (
-    <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
-      <StatusBar barStyle={t.isDark ? 'light-content' : 'dark-content'} backgroundColor={t.colors.bg} />
-      
-      {/* Custom Header */}
-      <CustomHeader />
-      
-      {/* Scrollable Content Area */}
-      <View style={{ flex: 1, paddingHorizontal: 20, gap: 16 }}>
-        
-        {/* Total Balance Card (Always visible and prominent) */}
-        {!loading && !error && <HeaderTotal />}
+    <View style={styles.fullScreenBackground}>
+      <StatusBar barStyle='dark-content' backgroundColor={t.colors.bg} />
 
-        {/* Search Input */}
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          borderWidth: 1,
-          borderColor: t.colors.border ?? '#E5E7EB',
-          backgroundColor: t.colors.surface ?? '#fff',
-          borderRadius: 16,
-          paddingHorizontal: 12,
-        }}>
-          {/* Icon Placeholder */}
-          <Text style={{ color: t.colors.placeholder ?? '#94a3b8', marginRight: 8, fontSize: 18 }}>🔍</Text> 
+      <CustomHeader />
+
+      <View style={styles.contentArea}>
+
+        {!loading && !error && (
+            <BankCardTotal 
+                primaryBalance={primaryBalance}
+                totalBalanceByCurrency={totalBalanceByCurrency}
+                currencyFormatter={currencyFormatter}
+                t={t}
+            />
+        )}
+
+        <View style={styles.searchInputContainer}>
+          <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
-            placeholder="Search by alias, number, currency…"
+            placeholder="Search by alias, number, currency..."
             placeholderTextColor={t.colors.placeholder ?? '#94a3b8'}
             value={query}
             onChangeText={setQuery}
-            style={{ flex: 1, color: t.colors.text, paddingVertical: 12, fontSize: 15 }}
+            style={styles.searchInput}
             returnKeyType="search"
           />
           {query.length > 0 && (
             <Pressable onPress={() => setQuery('')} style={{ padding: 4 }}>
-              {/* Icon Placeholder for Clear */}
-              <Text style={{ color: t.colors.placeholder ?? '#94a3b8', fontSize: 18 }}>ⓧ</Text> 
+              <Text style={styles.clearSearchIcon}>ⓧ</Text>
             </Pressable>
           )}
         </View>
 
-        {/* Filters (Horizontal Scroll) */}
         <View style={{ marginBottom: 4 }}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10, paddingRight: 20 }}
+            contentContainerStyle={styles.filterScrollView}
           >
             <FilterPill label="All Accounts" value="all" />
             <FilterPill label="Savings" value="savings" />
@@ -419,38 +437,34 @@ export default function DashboardScreen({ navigation }) {
           </ScrollView>
         </View>
 
-        {/* Error */}
         {!!error && <ErrorBanner />}
 
-        {/* List Header */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ fontSize: 18, fontWeight: '800', color: t.colors.text }}>
+        <View style={styles.listHeader}>
+          <Text style={styles.listHeaderTitle}>
             {typeFilter === 'all' ? 'All Accounts' : `${typeFilter.charAt(0).toUpperCase() + typeFilter.slice(1)} Accounts`}
             {filtered.length > 0 && ` (${filtered.length})`}
           </Text>
-          {/* Dedicated Refresh Button */}
           <Pressable
             onPress={onRefresh}
             accessibilityRole="button"
             disabled={refreshing || loading}
             android_ripple={{ color: '#00000010', borderless: true }}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, padding: 4 }}
+            style={styles.refreshButton}
           >
             {refreshing ? (
               <ActivityIndicator size="small" color={t.colors.primary} />
             ) : (
-              <Text style={{ color: t.colors.primary, fontWeight: '700' }}>{loading ? '' : 'Refresh'}</Text>
+              <Text style={[styles.refreshText, { color: t.colors.primary }]}>{loading ? '' : 'refresh'}</Text>
             )}
-            
+
           </Pressable>
         </View>
 
-        {/* List Content */}
-        {loading && !refreshing ? ( // Only show skeleton on initial load, not refresh
+        {loading && !refreshing ? (
           <View style={{ gap: 12 }}>
-            <Skeleton />
-            <Skeleton />
-            <Skeleton />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
           </View>
         ) : (
           <FlatList
@@ -466,8 +480,8 @@ export default function DashboardScreen({ navigation }) {
                 tintColor={t.colors.primary}
               />
             }
-            contentContainerStyle={{ paddingBottom: 30 }} // Extra space at the bottom
-            style={{ marginHorizontal: -20, paddingHorizontal: 20 }} // Counteract padding of parent
+            contentContainerStyle={styles.flatListContent}
+            style={styles.flatList}
             showsVerticalScrollIndicator={false}
           />
         )}
@@ -475,3 +489,260 @@ export default function DashboardScreen({ navigation }) {
     </View>
   );
 }
+
+const cardStyles = StyleSheet.create({
+    totalCard: {
+        padding: 0,
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 10,
+    },
+    bankCardGradientContainer: {
+        backgroundColor: '#00B367', 
+        position: 'relative',
+        overflow: 'hidden',
+        minHeight: 180, 
+    },
+    cardContentWrapper: {
+        padding: 24,
+        paddingTop: 30,
+        zIndex: 1, 
+    },
+    bubble: {
+        position: 'absolute',
+        borderRadius: 999,
+        backgroundColor: 'white',
+    },
+    cardRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    bankLogoPlaceholder: {
+        height: 25,
+        width: 60,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    bankLogoText: {
+        color: 'white',
+        fontWeight: '900',
+        fontSize: 10,
+        letterSpacing: 1.5,
+    },
+    chipPlaceholder: {
+        height: 30,
+        width: 40,
+        borderRadius: 4,
+        backgroundColor: '#FFD700', 
+    },
+    cardNumber: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: '800',
+        letterSpacing: 2,
+        marginTop: 30,
+        opacity: 0.95,
+    },
+    balanceLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: 'white',
+        opacity: 0.8,
+    },
+    primaryBalanceText: {
+        fontSize: 28,
+        fontWeight: '900',
+        color: 'white',
+        marginTop: 4,
+    },
+    toggleButton: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 6,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    toggleIcon: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 12,
+    },
+
+    footerContainer: {
+        padding: 20,
+        backgroundColor: 'rgba(0, 0, 0, 0.1)', 
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    footerToggle: {
+        marginBottom: 10,
+    },
+    footerToggleText: {
+        color: 'white', 
+        fontWeight: '700', 
+        fontSize: 12,
+        opacity: 0.8,
+    },
+    secondaryBalanceItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 8,
+        paddingTop: 4,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    secondaryBalanceCurrency: { color: 'white', opacity: 0.9, fontWeight: '600', fontSize: 14 },
+    secondaryBalanceAmount: { color: 'white', fontWeight: '800', fontSize: 16 },
+});
+
+
+const styles = StyleSheet.create({
+    fullScreenBackground: {
+        flex: 1,
+        backgroundColor: 'white',
+    },
+    headerContainer: {
+        paddingHorizontal: 20,
+        paddingTop: 6,
+        paddingBottom: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: 'white',
+        borderBottomWidth: 1,
+        borderBottomColor: '#f1f1f1',
+    },
+    headerGreeting: {
+        fontSize: 14,
+        color: '#566173',
+        fontWeight: '600',
+    },
+    headerTitle: {
+        fontSize: 28,
+        fontWeight: '900',
+        color: '#111827',
+    },
+    avatarPlaceholder: {
+        height: 40,
+        width: 40,
+        borderRadius: 20,
+        backgroundColor: '#e0f2fe',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarText: { color: '#00BFFF', fontWeight: 'bold', fontSize: 14 },
+    contentArea: { flex: 1, paddingHorizontal: 20, gap: 16, paddingTop: 16 },
+
+    searchInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+        backgroundColor: '#f9fafb',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+    },
+    searchIcon: {
+        color: '#94a3b8',
+        marginRight: 8,
+        fontSize: 18,
+        fontWeight: 'normal',
+    },
+    searchInput: {
+        flex: 1,
+        color: '#111827',
+        paddingVertical: 12,
+        fontSize: 15,
+        fontWeight: '500'
+    },
+    clearSearchIcon: { color: '#94a3b8', fontSize: 18, fontWeight: 'normal' },
+
+    filterScrollView: { gap: 8, paddingRight: 20 },
+    filterPillBase: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+    },
+    filterPillText: {
+        fontWeight: '700',
+        fontSize: 14
+    },
+
+    listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+    listHeaderTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
+    refreshButton: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: 4 },
+    refreshText: { fontWeight: '700', fontSize: 14 },
+
+    accountCard: { padding: 18, flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderWidth: 1, borderColor: '#f1f1f1' },
+    cardAccentLine: {
+        width: 4,
+        height: '100%',
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        borderTopLeftRadius: 16,
+        borderBottomLeftRadius: 16
+    },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
+    cardTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
+    cardSubtitle: { marginTop: 2, color: '#566173', fontSize: 13, fontWeight: '500' },
+    statusChip: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, alignSelf: 'center' },
+    statusChipText: { fontWeight: '700', fontSize: 11 },
+    cardFooter: {
+        marginTop: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderTopWidth: 1,
+        borderTopColor: '#f1f1f1',
+        paddingTop: 8
+    },
+    cardFooterLabel: { color: '#566173', fontWeight: '600', fontSize: 14 },
+    cardFooterAmount: { fontSize: 20, fontWeight: '900' },
+
+    skeletonCard: { padding: 18, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9fafb' },
+    skeletonAccent: { width: 4, height: '100%', borderRadius: 2, marginRight: 15 },
+    skeletonLine: { borderRadius: 9 },
+
+    errorBanner: { padding: 16, borderRadius: 12, backgroundColor: '#FDECEC', borderWidth: 1, borderColor: '#B3261E' },
+    errorTitle: { color: '#B3261E', fontWeight: '800', fontSize: 16 },
+    errorMessage: { color: '#B3261E', marginTop: 4, fontSize: 14 },
+    errorButton: {
+        marginTop: 12,
+        alignSelf: 'flex-start',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+    errorButtonText: { color: 'white', fontWeight: '700', fontSize: 14 },
+    emptyCard: { padding: 20, backgroundColor: 'white' },
+    emptyTitle: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 8 },
+    emptyMessage: { color: '#566173', fontSize: 14 },
+    emptyMessageSub: { color: '#566173', fontSize: 14, marginTop: 4, fontWeight: '600' },
+    emptyButton: {
+        marginTop: 16,
+        alignSelf: 'flex-start',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+    },
+    emptyButtonText: { color: 'white', fontWeight: '800' },
+    clearFilterButton: {
+        marginTop: 16,
+        alignSelf: 'flex-start',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+    },
+    clearFilterText: { fontWeight: '700' },
+    flatListContent: { paddingBottom: 30 },
+    flatList: { marginHorizontal: -20, paddingHorizontal: 20 }
+});
