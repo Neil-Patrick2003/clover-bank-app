@@ -4,7 +4,7 @@ import { useTheme } from '../theme/ThemeProvider';
 
 export function Card({ children, style }) {
   const t = useTheme();
-  return <View style={[{ backgroundColor:t.colors.card, borderRadius:t.radius,padding:0, borderWidth:1, borderColor:t.colors.border }, t.shadow, style]}>{children}</View>;
+  return <View style={[{ backgroundColor:t.colors.card, borderRadius:t.radius, padding:14, borderWidth:1, borderColor:t.colors.border }, t.shadow, style]}>{children}</View>;
 }
 
 export function Button({ title, onPress, variant='primary', style, disabled }) {
