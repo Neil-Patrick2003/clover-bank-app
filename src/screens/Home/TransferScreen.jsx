@@ -242,7 +242,9 @@ export default function TransferScreen() {
 
       const { data } = await api.post('/transfers', payload);
 
-      displayToast(`Transfer successful! Ref: ${data.reference_no}`, 'success');
+      // Extract transfer ID from API response
+      const refNo = data.transfer_id || data.reference_no || data.id;
+      displayToast(`Transfer successful! Ref: ${refNo}`, 'success');
 
       setAmount('');
       setRemarks('');
@@ -384,7 +386,6 @@ export default function TransferScreen() {
           {/* Transfer Details Section */}
           <View style={styles.detailsSection}>
             <DetailItem label="From" value={from ? `${from.account_number} • ${(from.currency || 'PHP').toUpperCase()}` : '-'} />
-            
             <View style={styles.detailItemContainer}>
               <Text style={[styles.detailLabel, { color: mutedColor }]}>To</Text>
               <Text style={[styles.detailValue, { color: textColor }]}>
@@ -448,7 +449,6 @@ export default function TransferScreen() {
         >
           {/* Main Card */}
           <Card style={[styles.mainCard, { backgroundColor: cardColor }]}>
-            
             <Text
               style={[
                 styles.headerTitle,

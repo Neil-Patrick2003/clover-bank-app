@@ -1,42 +1,104 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, StatusBar, FlatList, Alert, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, StatusBar, FlatList, Alert, TouchableOpacity, ScrollView, Platform, Modal, Picker } from 'react-native';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Card, Button, Input } from '../../components/ui';
 
 const BACKGROUND_IMAGE = require('../../../assets/background_image.png'); 
 
-// --- DUMMY SELECTOR OPTIONS (User-friendly values) ---
-const ACCOUNT_TYPES = ['Savings', 'Current', 'Time Deposit'];
+// --- SELECTOR OPTIONS (Database values and display names) ---
+const ACCOUNT_TYPES = ['savings', 'current', 'time_deposit'];
+const ACCOUNT_TYPES_DISPLAY = ['Savings', 'Current', 'Time Deposit'];
 const CURRENCIES = ['PHP', 'USD', 'EUR'];
 
-// --- CUSTOM SELECT COMPONENT (SIMULATED FOR UX) ---
-const Select = ({ label, value, options, onValueChange, t }) => {
-    const handlePress = () => {
-        Alert.alert(
-            label,
-            "Select an option:",
-            options.map(opt => ({
-                text: opt,
-                onPress: () => onValueChange(opt),
-            }))
-        );
-    };
+// --- CUSTOM SELECT COMPONENT (Web & Mobile) ---
+const Select = ({ label, value, options, displayOptions, onValueChange, t }) => {
+    const [showPicker, setShowPicker] = useState(false);
+    const displayValue = displayOptions ? displayOptions[options.indexOf(value)] || value : value;
 
+    if (Platform.OS === 'web') {
+        return (
+            <View style={{ width: '100%' }}>
+                <select
+                    value={value}
+                    onChange={(e) => onValueChange(e.target.value)}
+                    style={{
+                        width: '100%',
+                        padding: '12px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        borderRadius: '8px',
+                        borderWidth: '1.5px',
+                        borderColor: value ? t.colors.primary : 'rgba(255, 255, 255, 0.5)',
+                        borderStyle: 'solid',
+                        color: 'white',
+                        fontSize: '16px',
+                        fontFamily: 'inherit',
+                        boxSizing: 'border-box',
+                        cursor: 'pointer',
+                    }}
+                >
+                    <option value="" style={{ color: '#333' }}>
+                        {label}
+                    </option>
+                    {options.map((opt, idx) => (
+                        <option key={opt} value={opt} style={{ color: '#333' }}>
+                            {displayOptions ? displayOptions[idx] : opt}
+                        </option>
+                    ))}
+                </select>
+            </View>
+        );
+    }
+
+    // Mobile picker
     return (
-        <TouchableOpacity onPress={handlePress} style={{ width: '100%' }}>
-            <Input
-                placeholder={label}
-                value={value}
-                editable={false}
-                pointerEvents="none"
-                style={{ 
-                    borderColor: value ? t.colors.primary : 'rgba(255, 255, 255, 0.5)',
-                    borderWidth: 1.5,
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                }}
-            />
-        </TouchableOpacity>
+        <>
+            <TouchableOpacity onPress={() => setShowPicker(true)} style={{ width: '100%' }}>
+                <Input
+                    placeholder={label}
+                    value={displayValue}
+                    editable={false}
+                    pointerEvents="none"
+                    style={{ 
+                        borderColor: value ? t.colors.primary : 'rgba(255, 255, 255, 0.5)',
+                        borderWidth: 1.5,
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    }}
+                    inputStyle={{ color: 'white' }}
+                />
+            </TouchableOpacity>
+            <Modal
+                visible={showPicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowPicker(false)}
+            >
+                <View style={styles.pickerContainer}>
+                    <View style={styles.pickerHeader}>
+                        <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>
+                            {label}
+                        </Text>
+                        <TouchableOpacity onPress={() => setShowPicker(false)}>
+                            <Text style={{ color: t.colors.primary, fontSize: 16, fontWeight: 'bold' }}>
+                                Done
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                    <Picker
+                        selectedValue={value}
+                        onValueChange={(itemValue) => {
+                            onValueChange(itemValue);
+                            setShowPicker(false);
+                        }}
+                        style={{ backgroundColor: '#333', color: 'white' }}
+                    >
+                        {options.map((opt, idx) => (
+                            <Picker.Item key={opt} label={displayOptions ? displayOptions[idx] : opt} value={opt} />
+                        ))}
+                    </Picker>
+                </View>
+            </Modal>
+        </>
     );
 };
 
@@ -45,8 +107,8 @@ export default function RequestedAccountsScreen({ route, navigation }) {
   const { applicationId } = route.params; 
   const t = useTheme();
 
-  // Initialize state with user-friendly values for Select component
-  const [type, setType] = useState('Savings'); 
+  // Initialize state with database values
+  const [type, setType] = useState('savings'); 
   const [currency, setCurrency] = useState('PHP');
   const [initial, setInitial] = useState('');
   const [items, setItems] = useState([]);
@@ -70,12 +132,9 @@ export default function RequestedAccountsScreen({ route, navigation }) {
     }
     setIsLoading(true);
     
-    // Convert user-friendly type to API format (e.g., 'Savings' -> 'savings')
-    const apiType = type.toLowerCase().replace(/\s/g, '_'); 
-    
     try {
         await api.post(`/applications/${applicationId}/accounts`, { 
-            requested_type: apiType, 
+            requested_type: type, 
             currency, 
             initial_deposit: Number(initial || 0) 
         });
@@ -125,6 +184,7 @@ export default function RequestedAccountsScreen({ route, navigation }) {
                     label="Account Type"
                     value={type}
                     options={ACCOUNT_TYPES}
+                    displayOptions={ACCOUNT_TYPES_DISPLAY}
                     onValueChange={setType}
                     t={t}
                 />

@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, StatusBar, TouchableOpacity, Alert, Platform, Modal } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, StatusBar, TouchableOpacity, Alert, Platform, Modal, ScrollView, Picker } from 'react-native';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Card, Button, Input } from '../../components/ui';
 
 const BACKGROUND_IMAGE = require('../../../assets/background_image.png'); 
 
-const KYC_LEVELS = ['Basic', 'Standard', 'Enhanced'];
-const ID_TYPES = ['Passport', 'National ID', 'Driver\'s License'];
-
+const KYC_LEVELS = ['basic', 'standard', 'enhanced'];
+const KYC_LEVELS_DISPLAY = ['Basic', 'Standard', 'Enhanced'];
+const ID_TYPES = ['passport', 'national_id', 'driver_license', 'sss', 'umid', 'other'];
+const ID_TYPES_DISPLAY = ['Passport', 'National ID', 'Driver\'s License', 'SSS', 'UMID', 'Other'];
 
 const DatePickerField = ({ label, value, onValueChange, t }) => {
     const handleDateInputChange = (e) => {
@@ -43,61 +44,112 @@ const DatePickerField = ({ label, value, onValueChange, t }) => {
     );
 };
 
-const Select = ({ label, value, options, onValueChange, t }) => {
- 
-        const handlePress = () => {
-        Alert.alert(
-            label,
-            "Select an option:",
-            options.map(opt => ({
-                text: opt,
-                onPress: () => onValueChange(opt),
-            }))
-        );
-    };
+const Select = ({ label, value, options, displayOptions, onValueChange, t }) => {
+    const [showPicker, setShowPicker] = useState(false);
+    const displayValue = displayOptions[options.indexOf(value)] || value;
 
+    if (Platform.OS === 'web') {
+        return (
+            <View style={{ width: '100%' }}>
+                <select
+                    value={value}
+                    onChange={(e) => onValueChange(e.target.value)}
+                    style={{
+                        width: '100%',
+                        padding: '12px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        borderRadius: '8px',
+                        borderWidth: '1.5px',
+                        borderColor: value ? t.colors.primary : 'rgba(255, 255, 255, 0.5)',
+                        borderStyle: 'solid',
+                        color: 'white',
+                        fontSize: '16px',
+                        fontFamily: 'inherit',
+                        boxSizing: 'border-box',
+                        cursor: 'pointer',
+                    }}
+                >
+                    <option value="" style={{ color: '#333' }}>
+                        {label}
+                    </option>
+                    {options.map((opt, idx) => (
+                        <option key={opt} value={opt} style={{ color: '#333' }}>
+                            {displayOptions[idx]}
+                        </option>
+                    ))}
+                </select>
+            </View>
+        );
+    }
+
+    // Mobile picker
     return (
-        <TouchableOpacity onPress={handlePress} style={{ width: '100%' }}>
-            <Input
-                placeholder={label}
-                value={value}
-                editable={false}
-                pointerEvents="none"
-                style={{ 
-                    borderColor: value ? t.colors.primary : 'rgba(255, 255, 255, 0.5)',
-                    borderWidth: 1.5,
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                }}
-                inputStyle={{ color: 'white' }}
-            />
-        </TouchableOpacity>
+        <>
+            <TouchableOpacity onPress={() => setShowPicker(true)} style={{ width: '100%' }}>
+                <Input
+                    placeholder={label}
+                    value={displayValue}
+                    editable={false}
+                    pointerEvents="none"
+                    style={{ 
+                        borderColor: value ? t.colors.primary : 'rgba(255, 255, 255, 0.5)',
+                        borderWidth: 1.5,
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    }}
+                    inputStyle={{ color: 'white' }}
+                />
+            </TouchableOpacity>
+            <Modal
+                visible={showPicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowPicker(false)}
+            >
+                <View style={styles.pickerContainer}>
+                    <View style={styles.pickerHeader}>
+                        <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>
+                            {label}
+                        </Text>
+                        <TouchableOpacity onPress={() => setShowPicker(false)}>
+                            <Text style={{ color: t.colors.primary, fontSize: 16, fontWeight: 'bold' }}>
+                                Done
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                    <Picker
+                        selectedValue={value}
+                        onValueChange={(itemValue) => {
+                            onValueChange(itemValue);
+                            setShowPicker(false);
+                        }}
+                        style={{ backgroundColor: '#333', color: 'white' }}
+                    >
+                        {options.map((opt, idx) => (
+                            <Picker.Item key={opt} label={displayOptions[idx]} value={opt} />
+                        ))}
+                    </Picker>
+                </View>
+            </Modal>
+        </>
     );
 };
-
 
 export default function KycScreen({ route, navigation }) {
   const { applicationId } = route.params; 
   const t = useTheme();
 
-  const [kycLevel, setKycLevel] = useState('Basic');
-  const [idType, setIdType] = useState('Passport');
+  const [kycLevel, setKycLevel] = useState('basic');
+  const [idType, setIdType] = useState('passport');
   const [idNumber, setIdNumber] = useState(''); 
   const [idExpiry, setIdExpiry] = useState('');
   const [msg, setMsg] = useState('');
 
-
 const save = async () => {
     setMsg('');
     try {
-      
-      const apiIdType = idType.toLowerCase()
-        .replace("driver's license", 'driver_license') 
-        .replace(/[']/g, '') 
-        .replace(/\s/g, '_'); 
-
       await api.post('/applications/kyc', { 
-          kyc_level: kycLevel.toLowerCase(), 
-          id_type: apiIdType, 
+          kyc_level: kycLevel, 
+          id_type: idType, 
           id_number: idNumber, 
           id_expiry: idExpiry || null 
       });
@@ -107,8 +159,6 @@ const save = async () => {
         setMsg('❌ ' + (e?.response?.data?.message || 'Failed to save KYC')); 
     }
 };
-
-const ID_TYPES = ['Passport', 'National ID', 'Driver\'s License'];
 
   return (
     <ImageBackground 
@@ -137,6 +187,7 @@ const ID_TYPES = ['Passport', 'National ID', 'Driver\'s License'];
                 label="Select KYC Level"
                 value={kycLevel}
                 options={KYC_LEVELS}
+                displayOptions={KYC_LEVELS_DISPLAY}
                 onValueChange={setKycLevel}
                 t={t}
             />
@@ -146,6 +197,7 @@ const ID_TYPES = ['Passport', 'National ID', 'Driver\'s License'];
                 label="Select ID Type"
                 value={idType}
                 options={ID_TYPES}
+                displayOptions={ID_TYPES_DISPLAY}
                 onValueChange={setIdType}
                 t={t}
             />
