@@ -9,11 +9,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 //   return 'http://192.168.50.75:8000/api/v1'; // iOS simulator
 // }; Last getApiBase from master branch from Neil
 
+// const getApiBase = () => {
+//   if (Platform.OS === 'web')     return 'http://192.168.18.93:8000/api/v1';
+//   if (Platform.OS === 'android') return 'http://192.168.18.93:8000/api/v1';
+//   return 'http://192.168.18.93:8000/api/v1'; // iOS simulator
+// }; Job 
+
 const getApiBase = () => {
-  if (Platform.OS === 'web')     return 'http://192.168.18.93:8000/api/v1';
-  if (Platform.OS === 'android') return 'http://192.168.18.93:8000/api/v1';
-  return 'http://192.168.18.93:8000/api/v1'; // iOS simulator
-};
+  if (Platform.OS === 'web')     return 'http://10.156.56.44:8000/api/v1';
+  if (Platform.OS === 'android') return 'http://10.156.56.44:8000/api/v1';
+  return 'http://10.156.56.44:8000/api/v1'; // iOS simulator
+}; // Jaspher - Misenas's Wifi Local IP
 
 export const api = axios.create({
   baseURL: getApiBase(),

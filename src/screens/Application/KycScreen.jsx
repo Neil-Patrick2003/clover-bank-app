@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, StatusBar, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, StatusBar, TouchableOpacity, Alert, Platform, Modal } from 'react-native';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Card, Button, Input } from '../../components/ui';
@@ -9,6 +9,39 @@ const BACKGROUND_IMAGE = require('../../../assets/background_image.png');
 const KYC_LEVELS = ['Basic', 'Standard', 'Enhanced'];
 const ID_TYPES = ['Passport', 'National ID', 'Driver\'s License'];
 
+
+const DatePickerField = ({ label, value, onValueChange, t }) => {
+    const handleDateInputChange = (e) => {
+        const inputValue = e.target.value;
+        if (inputValue) {
+            onValueChange(inputValue);
+        }
+    };
+
+    return (
+        <View style={{ width: '100%' }}>
+            <input
+                type="date"
+                value={value}
+                onChange={handleDateInputChange}
+                style={{
+                    width: '100%',
+                    padding: '12px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: '8px',
+                    borderWidth: '1px',
+                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    borderStyle: 'solid',
+                    color: 'white',
+                    fontSize: '16px',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box',
+                }}
+                placeholder="YYYY-MM-DD"
+            />
+        </View>
+    );
+};
 
 const Select = ({ label, value, options, onValueChange, t }) => {
  
@@ -127,14 +160,12 @@ const ID_TYPES = ['Passport', 'National ID', 'Driver\'s License'];
                 keyboardType="default"
             />
             
-            {/* Standard Input for ID Expiry */}
-            <Input 
-                placeholder="ID Expiry (YYYY-MM-DD, optional)" 
-                value={idExpiry} 
-                onChangeText={setIdExpiry} 
-                style={styles.glassInput}
-                inputStyle={styles.glassInputText}
-                keyboardType="numeric"
+            {/* Date Picker for ID Expiry */}
+            <DatePickerField
+                label="ID Expiry"
+                value={idExpiry}
+                onValueChange={setIdExpiry}
+                t={t}
             />
 
             {/* Continue Button */}
@@ -211,5 +242,20 @@ const styles = StyleSheet.create({
   },
   glassInputText: {
     color: 'white',
-  }
+  },
+  pickerContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'flex-end',
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+  },
 });

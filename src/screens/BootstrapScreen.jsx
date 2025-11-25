@@ -138,9 +138,7 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontWeight: '900',
     color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
+    textShadow: '1px 1px 3px rgba(0, 0, 0, 0.5)',
     marginBottom: 10,
   },
   subtitle: {
@@ -172,10 +170,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     minWidth: 200,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    boxShadow: '0px 4px 5px rgba(0, 0, 0, 0.3)',
     elevation: 8,
   },
   dashboardButtonText: {

@@ -14,6 +14,9 @@ import LoginScreen from '../screens/Auth/LoginScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
 import WaitingReviewScreen from '../screens/WaitingReviewScreen';
 
+// Profile
+import ProfileScreen from '../screens/Home/ProfileScreen';
+
 // Wizard
 import CreateApplicationScreen from '../screens/Application/CreateApplicationScreen';
 import KycScreen from '../screens/Application/KycScreen';
@@ -89,7 +92,7 @@ export default function RootNavigator() {
     },
   };
 
-  const commonHeader = {
+  const getHeaderOptions = (navigation) => ({
     headerStyle: { backgroundColor: '#fff' },
     headerTitleAlign: 'left',
     headerTitle: () => <BrandLogo />,
@@ -101,15 +104,14 @@ export default function RootNavigator() {
         size={24}
         color="#065f46"
         style={{ marginRight: 12 }}
-        onPress={() => {/* navigate to Profile screen */}}
+        onPress={() => navigation.navigate('Profile')}
       />
     ),
-
-  };
+  });
 
   return (
     <NavigationContainer theme={navTheme}>
-      <Stack.Navigator screenOptions={commonHeader}>
+      <Stack.Navigator screenOptions={({ navigation }) => getHeaderOptions(navigation)}>
         {!user ? (
           <>
             <Stack.Screen
@@ -141,6 +143,7 @@ export default function RootNavigator() {
             />
             <Stack.Screen name="AccountDetail" component={AccountDetailScreen} options={{ title: 'Account' }} />
             <Stack.Screen name="WaitingReview" component={WaitingReviewScreen} options={{ title: 'In Review' }} />
+            <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
           </>
         )}
       </Stack.Navigator>
