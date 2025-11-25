@@ -6,9 +6,26 @@ import { AuthContext } from '../../context/AuthContext';
 
 // --- CUSTOM ICON COMPONENT (For Password Toggle) ---
 const Icon = ({ name, size, color, onPress }) => (
-    <TouchableOpacity onPress={onPress} style={{ padding: 8, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ fontSize: size, color: color, lineHeight: size }}>
-            {name === 'eye-off' ? '👁️‍🗨️' : '👁️'}
+    <TouchableOpacity 
+        onPress={onPress} 
+        style={{ 
+            padding: 10, 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            minWidth: 44,
+            minHeight: 44,
+            borderRadius: 8,
+            marginLeft: -8
+        }}
+        activeOpacity={0.6}
+    >
+        <Text style={{ 
+            fontSize: size, 
+            color: color, 
+            lineHeight: size,
+            textAlign: 'center'
+        }}>
+            {name === 'eye-off' ? '🚫' : '👁️'}
         </Text>
     </TouchableOpacity>
 );
