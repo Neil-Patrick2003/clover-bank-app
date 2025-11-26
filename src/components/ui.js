@@ -23,11 +23,26 @@ export function Button({ title, onPress, variant='primary', style, disabled }) {
 
 export function Input(props) {
   const t = useTheme();
+  const { rightIcon, inputStyle, ...restProps } = props;
+  
+  if (rightIcon) {
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius, backgroundColor: '#fff', paddingRight: 8 }}>
+        <RNInput
+          {...restProps}
+          style={[{ flex: 1, padding: 12, borderRadius: t.radius }, inputStyle]}
+          autoCapitalize={restProps.autoCapitalize ?? 'none'}
+        />
+        {rightIcon}
+      </View>
+    );
+  }
+  
   return (
     <RNInput
-      {...props}
+      {...restProps}
       style={[{ borderWidth:1, borderColor:t.colors.border, padding:12, borderRadius:t.radius, backgroundColor:'#fff' }, props.style]}
-      autoCapitalize={props.autoCapitalize ?? 'none'}
+      autoCapitalize={restProps.autoCapitalize ?? 'none'}
     />
   );
 }

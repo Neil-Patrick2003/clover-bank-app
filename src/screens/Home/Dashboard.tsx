@@ -29,14 +29,25 @@ type Account = {
 
 type AccountTypeFilter = 'all' | 'savings' | 'checking' | 'time';
 
-const BankCardTotal = ({ primaryBalance, totalBalanceByCurrency, currencyFormatter, t }) => {
+const BankCardTotal = ({ primaryBalance, totalBalanceByCurrency, currencyFormatter, t, accounts }) => {
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
+  const [isAccountNumberHidden, setIsAccountNumberHidden] = useState(true);
   const [showTotals, setShowTotals] = useState(false); 
 
   const totalAmount = primaryBalance ? primaryBalance[1] : 0;
   const primaryCurrency = primaryBalance ? primaryBalance[0] : 'PHP';
   const displayAmount = isBalanceHidden ? '******' : currencyFormatter(totalAmount, primaryCurrency);
   const isZeroOrNegative = totalAmount <= 0;
+
+  // Get the first active account's number, or first account if none active
+  const primaryAccount = accounts && accounts.length > 0 
+    ? accounts.find(a => a.status === 'active') || accounts[0]
+    : null;
+  const accountNumber = primaryAccount?.account_number || '0000000000000000';
+  const fullAccountNumber = String(accountNumber);
+  const displayAccountNumber = isAccountNumberHidden 
+    ? fullAccountNumber.split('').map(() => '*').join(' ')
+    : fullAccountNumber;
 
   const gradientColors = ['#00B367', '#00CC7A', '#33E699']; 
 
@@ -59,9 +70,18 @@ const BankCardTotal = ({ primaryBalance, totalBalanceByCurrency, currencyFormatt
               <View style={cardStyles.chipPlaceholder} />
             </View>
 
-            <Text style={cardStyles.cardNumber}>
-              **** **** **** 4242
-            </Text>
+            <View style={[cardStyles.cardRow, { marginTop: 20, marginBottom: 5 }]}>
+              <Text style={cardStyles.cardNumber}>
+                {displayAccountNumber}
+              </Text>
+              <Pressable 
+                onPress={() => setIsAccountNumberHidden(!isAccountNumberHidden)} 
+                style={cardStyles.toggleButton}
+                accessibilityLabel={isAccountNumberHidden ? "Show account number" : "Hide account number"}
+              >
+                <Text style={cardStyles.toggleIcon}>{isAccountNumberHidden ? 'SHOW' : 'HIDE'}</Text>
+              </Pressable>
+            </View>
             
             <View style={[cardStyles.cardRow, { marginTop: 15 }]}>
               <View>
@@ -404,6 +424,7 @@ export default function DashboardScreen({ navigation }) {
                 totalBalanceByCurrency={totalBalanceByCurrency}
                 currencyFormatter={currencyFormatter}
                 t={t}
+                accounts={accounts}
             />
         )}
 

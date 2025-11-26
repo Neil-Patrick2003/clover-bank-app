@@ -1,42 +1,70 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, StatusBar, FlatList, Alert, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, StatusBar, FlatList, Alert, TouchableOpacity, ScrollView, Platform, Modal } from 'react-native';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Card, Button, Input } from '../../components/ui';
 
 const BACKGROUND_IMAGE = require('../../../assets/background_image.png'); 
 
-// --- DUMMY SELECTOR OPTIONS (User-friendly values) ---
-const ACCOUNT_TYPES = ['Savings', 'Current', 'Time Deposit'];
+// --- SELECTOR OPTIONS (Database values and display names) ---
+const ACCOUNT_TYPES = ['savings', 'current', 'time_deposit'];
+const ACCOUNT_TYPES_DISPLAY = ['Savings', 'Current', 'Time Deposit'];
 const CURRENCIES = ['PHP', 'USD', 'EUR'];
 
-// --- CUSTOM SELECT COMPONENT (SIMULATED FOR UX) ---
-const Select = ({ label, value, options, onValueChange, t }) => {
-    const handlePress = () => {
-        Alert.alert(
-            label,
-            "Select an option:",
-            options.map(opt => ({
-                text: opt,
-                onPress: () => onValueChange(opt),
-            }))
-        );
-    };
+// --- CUSTOM SELECT COMPONENT (Compact Dropdown) ---
+const Select = ({ label, value, options, displayOptions, onValueChange, t }) => {
+    const [showPicker, setShowPicker] = useState(false);
+    const displayValue = displayOptions ? displayOptions[options.indexOf(value)] || value : value;
 
     return (
-        <TouchableOpacity onPress={handlePress} style={{ width: '100%' }}>
-            <Input
-                placeholder={label}
-                value={value}
-                editable={false}
-                pointerEvents="none"
-                style={{ 
-                    borderColor: value ? t.colors.primary : 'rgba(255, 255, 255, 0.5)',
-                    borderWidth: 1.5,
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                }}
-            />
-        </TouchableOpacity>
+        <>
+            <TouchableOpacity onPress={() => setShowPicker(true)} style={{ width: '100%' }}>
+                <Input
+                    placeholder={label}
+                    value={displayValue}
+                    editable={false}
+                    pointerEvents="none"
+                    style={{ 
+                        borderColor: value ? t.colors.primary : 'rgba(255, 255, 255, 0.5)',
+                        borderWidth: 1.5,
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    }}
+                    inputStyle={{ color: 'white' }}
+                />
+            </TouchableOpacity>
+            <Modal
+                visible={showPicker}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowPicker(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' }}>
+                    <View style={{ backgroundColor: '#1a1a1a', borderRadius: 12, padding: 10, width: '80%', maxWidth: 300, maxHeight: 400 }}>
+                        <ScrollView nestedScrollEnabled={true}>
+                            {options.map((opt, idx) => (
+                                <TouchableOpacity
+                                    key={opt}
+                                    onPress={() => {
+                                        onValueChange(opt);
+                                        setShowPicker(false);
+                                    }}
+                                    style={{
+                                        padding: 12,
+                                        borderBottomWidth: 1,
+                                        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+                                        backgroundColor: opt === value ? 'rgba(144, 238, 144, 0.3)' : 'transparent',
+                                    }}
+                                >
+                                    <Text style={{ color: opt === value ? '#90EE90' : 'white', fontSize: 14, fontWeight: opt === value ? 'bold' : 'normal' }}>
+                                        {displayOptions ? displayOptions[idx] : opt}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+        </>
     );
 };
 
@@ -45,8 +73,8 @@ export default function RequestedAccountsScreen({ route, navigation }) {
   const { applicationId } = route.params; 
   const t = useTheme();
 
-  // Initialize state with user-friendly values for Select component
-  const [type, setType] = useState('Savings'); 
+  // Initialize state with database values
+  const [type, setType] = useState('savings'); 
   const [currency, setCurrency] = useState('PHP');
   const [initial, setInitial] = useState('');
   const [items, setItems] = useState([]);
@@ -70,12 +98,9 @@ export default function RequestedAccountsScreen({ route, navigation }) {
     }
     setIsLoading(true);
     
-    // Convert user-friendly type to API format (e.g., 'Savings' -> 'savings')
-    const apiType = type.toLowerCase().replace(/\s/g, '_'); 
-    
     try {
         await api.post(`/applications/${applicationId}/accounts`, { 
-            requested_type: apiType, 
+            requested_type: type, 
             currency, 
             initial_deposit: Number(initial || 0) 
         });
@@ -125,6 +150,7 @@ export default function RequestedAccountsScreen({ route, navigation }) {
                     label="Account Type"
                     value={type}
                     options={ACCOUNT_TYPES}
+                    displayOptions={ACCOUNT_TYPES_DISPLAY}
                     onValueChange={setType}
                     t={t}
                 />
