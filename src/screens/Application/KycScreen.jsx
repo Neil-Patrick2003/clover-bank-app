@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, StatusBar, TouchableOpacity, Alert, Platform, Modal, ScrollView, Picker } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, StatusBar, TouchableOpacity, Alert, Platform, Modal, ScrollView, FlatList } from 'react-native';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Card, Button, Input } from '../../components/ui';
@@ -12,35 +12,238 @@ const ID_TYPES = ['passport', 'national_id', 'driver_license', 'sss', 'umid', 'o
 const ID_TYPES_DISPLAY = ['Passport', 'National ID', 'Driver\'s License', 'SSS', 'UMID', 'Other'];
 
 const DatePickerField = ({ label, value, onValueChange, t }) => {
-    const handleDateInputChange = (e) => {
-        const inputValue = e.target.value;
-        if (inputValue) {
-            onValueChange(inputValue);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [year, setYear] = useState(value ? value.split('-')[0] : new Date().getFullYear().toString());
+    const [month, setMonth] = useState(value ? value.split('-')[1] : '01');
+    const [day, setDay] = useState(value ? value.split('-')[2] : '01');
+
+    const generateYears = () => {
+        const currentYear = new Date().getFullYear();
+        const years = [];
+        for (let i = currentYear - 100; i <= currentYear + 10; i++) {
+            years.push(i.toString());
         }
+        return years;
     };
 
+    const generateMonths = () => {
+        return ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+    };
+
+    const generateDays = () => {
+        const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
+        const days = [];
+        for (let i = 1; i <= daysInMonth; i++) {
+            days.push(i.toString().padStart(2, '0'));
+        }
+        return days;
+    };
+
+    const handleDateConfirm = () => {
+        const formattedDate = `${year}-${month}-${day}`;
+        onValueChange(formattedDate);
+        setShowDatePicker(false);
+    };
+
+    const displayDate = value || 'YYYY-MM-DD';
+
+    if (Platform.OS === 'web') {
+        return (
+            <View style={{ width: '100%' }}>
+                <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{ width: '100%' }}>
+                    <Input
+                        placeholder="YYYY-MM-DD"
+                        value={displayDate}
+                        editable={false}
+                        pointerEvents="none"
+                        style={{ 
+                            borderColor: value ? t.colors.primary : 'rgba(255, 255, 255, 0.5)',
+                            borderWidth: 1.5,
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        }}
+                        inputStyle={{ color: 'white' }}
+                    />
+                </TouchableOpacity>
+                <Modal
+                    visible={showDatePicker}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setShowDatePicker(false)}
+                >
+                    <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.8)', justifyContent: 'center', alignItems: 'center' }}>
+                        <View style={{ backgroundColor: '#1a1a1a', borderRadius: 12, padding: 20, width: '90%', maxWidth: 400 }}>
+                            <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' }}>
+                                Select Date
+                            </Text>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, gap: 10 }}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ color: '#90EE90', fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>Year</Text>
+                                    <ScrollView style={{ maxHeight: 150, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)', borderRadius: 8 }}>
+                                        {generateYears().map((y) => (
+                                            <TouchableOpacity
+                                                key={y}
+                                                onPress={() => setYear(y)}
+                                                style={{ padding: 10, backgroundColor: y === year ? 'rgba(144, 238, 144, 0.3)' : 'transparent' }}
+                                            >
+                                                <Text style={{ color: y === year ? '#90EE90' : 'white', fontSize: 14, fontWeight: y === year ? 'bold' : 'normal' }}>
+                                                    {y}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ color: '#90EE90', fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>Month</Text>
+                                    <ScrollView style={{ maxHeight: 150, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)', borderRadius: 8 }}>
+                                        {generateMonths().map((m) => (
+                                            <TouchableOpacity
+                                                key={m}
+                                                onPress={() => setMonth(m)}
+                                                style={{ padding: 10, backgroundColor: m === month ? 'rgba(144, 238, 144, 0.3)' : 'transparent' }}
+                                            >
+                                                <Text style={{ color: m === month ? '#90EE90' : 'white', fontSize: 14, fontWeight: m === month ? 'bold' : 'normal' }}>
+                                                    {m}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ color: '#90EE90', fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>Day</Text>
+                                    <ScrollView style={{ maxHeight: 150, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)', borderRadius: 8 }}>
+                                        {generateDays().map((d) => (
+                                            <TouchableOpacity
+                                                key={d}
+                                                onPress={() => setDay(d)}
+                                                style={{ padding: 10, backgroundColor: d === day ? 'rgba(144, 238, 144, 0.3)' : 'transparent' }}
+                                            >
+                                                <Text style={{ color: d === day ? '#90EE90' : 'white', fontSize: 14, fontWeight: d === day ? 'bold' : 'normal' }}>
+                                                    {d}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+                                <TouchableOpacity onPress={() => setShowDatePicker(false)} style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6, backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={handleDateConfirm} style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6, backgroundColor: t.colors.primary }}>
+                                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Confirm</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
+            </View>
+        );
+    }
+
+    // Mobile version
     return (
-        <View style={{ width: '100%' }}>
-            <input
-                type="date"
-                value={value}
-                onChange={handleDateInputChange}
-                style={{
-                    width: '100%',
-                    padding: '12px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '8px',
-                    borderWidth: '1px',
-                    borderColor: 'rgba(255, 255, 255, 0.5)',
-                    borderStyle: 'solid',
-                    color: 'white',
-                    fontSize: '16px',
-                    fontFamily: 'inherit',
-                    boxSizing: 'border-box',
-                }}
-                placeholder="YYYY-MM-DD"
-            />
-        </View>
+        <>
+            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{ width: '100%' }}>
+                <Input
+                    placeholder="YYYY-MM-DD"
+                    value={displayDate}
+                    editable={false}
+                    pointerEvents="none"
+                    style={{ 
+                        borderColor: value ? t.colors.primary : 'rgba(255, 255, 255, 0.5)',
+                        borderWidth: 1.5,
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    }}
+                    inputStyle={{ color: 'white' }}
+                />
+            </TouchableOpacity>
+            <Modal
+                visible={showDatePicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowDatePicker(false)}
+            >
+                <View style={styles.pickerContainer}>
+                    <View style={styles.pickerHeader}>
+                        <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>
+                            Select Date
+                        </Text>
+                        <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                            <Text style={{ color: t.colors.primary, fontSize: 16, fontWeight: 'bold' }}>
+                                Close
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 10, paddingVertical: 20 }}>
+                        <View style={{ flex: 1, marginHorizontal: 5 }}>
+                            <Text style={{ color: '#90EE90', fontSize: 12, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' }}>Year</Text>
+                            <FlatList
+                                data={generateYears()}
+                                keyExtractor={(item) => item}
+                                renderItem={({ item: y }) => (
+                                    <TouchableOpacity
+                                        onPress={() => setYear(y)}
+                                        style={{ paddingVertical: 10, paddingHorizontal: 5, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.1)', backgroundColor: y === year ? 'rgba(144, 238, 144, 0.2)' : 'transparent' }}
+                                    >
+                                        <Text style={{ color: y === year ? '#90EE90' : 'white', fontSize: 14, fontWeight: y === year ? 'bold' : 'normal', textAlign: 'center' }}>
+                                            {y}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                                nestedScrollEnabled={true}
+                                scrollEnabled={true}
+                            />
+                        </View>
+                        <View style={{ flex: 1, marginHorizontal: 5 }}>
+                            <Text style={{ color: '#90EE90', fontSize: 12, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' }}>Month</Text>
+                            <FlatList
+                                data={generateMonths()}
+                                keyExtractor={(item) => item}
+                                renderItem={({ item: m }) => (
+                                    <TouchableOpacity
+                                        onPress={() => setMonth(m)}
+                                        style={{ paddingVertical: 10, paddingHorizontal: 5, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.1)', backgroundColor: m === month ? 'rgba(144, 238, 144, 0.2)' : 'transparent' }}
+                                    >
+                                        <Text style={{ color: m === month ? '#90EE90' : 'white', fontSize: 14, fontWeight: m === month ? 'bold' : 'normal', textAlign: 'center' }}>
+                                            {m}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                                nestedScrollEnabled={true}
+                                scrollEnabled={true}
+                            />
+                        </View>
+                        <View style={{ flex: 1, marginHorizontal: 5 }}>
+                            <Text style={{ color: '#90EE90', fontSize: 12, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' }}>Day</Text>
+                            <FlatList
+                                data={generateDays()}
+                                keyExtractor={(item) => item}
+                                renderItem={({ item: d }) => (
+                                    <TouchableOpacity
+                                        onPress={() => setDay(d)}
+                                        style={{ paddingVertical: 10, paddingHorizontal: 5, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.1)', backgroundColor: d === day ? 'rgba(144, 238, 144, 0.2)' : 'transparent' }}
+                                    >
+                                        <Text style={{ color: d === day ? '#90EE90' : 'white', fontSize: 14, fontWeight: d === day ? 'bold' : 'normal', textAlign: 'center' }}>
+                                            {d}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                                nestedScrollEnabled={true}
+                                scrollEnabled={true}
+                            />
+                        </View>
+                    </View>
+                    <View style={{ paddingHorizontal: 20, paddingVertical: 15, backgroundColor: 'rgba(0, 0, 0, 0.9)', flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+                        <TouchableOpacity onPress={() => setShowDatePicker(false)} style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6, backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
+                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={handleDateConfirm} style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6, backgroundColor: t.colors.primary }}>
+                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Confirm</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        </>
     );
 };
 
@@ -48,41 +251,6 @@ const Select = ({ label, value, options, displayOptions, onValueChange, t }) => 
     const [showPicker, setShowPicker] = useState(false);
     const displayValue = displayOptions[options.indexOf(value)] || value;
 
-    if (Platform.OS === 'web') {
-        return (
-            <View style={{ width: '100%' }}>
-                <select
-                    value={value}
-                    onChange={(e) => onValueChange(e.target.value)}
-                    style={{
-                        width: '100%',
-                        padding: '12px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        borderRadius: '8px',
-                        borderWidth: '1.5px',
-                        borderColor: value ? t.colors.primary : 'rgba(255, 255, 255, 0.5)',
-                        borderStyle: 'solid',
-                        color: 'white',
-                        fontSize: '16px',
-                        fontFamily: 'inherit',
-                        boxSizing: 'border-box',
-                        cursor: 'pointer',
-                    }}
-                >
-                    <option value="" style={{ color: '#333' }}>
-                        {label}
-                    </option>
-                    {options.map((opt, idx) => (
-                        <option key={opt} value={opt} style={{ color: '#333' }}>
-                            {displayOptions[idx]}
-                        </option>
-                    ))}
-                </select>
-            </View>
-        );
-    }
-
-    // Mobile picker
     return (
         <>
             <TouchableOpacity onPress={() => setShowPicker(true)} style={{ width: '100%' }}>
@@ -102,32 +270,33 @@ const Select = ({ label, value, options, displayOptions, onValueChange, t }) => 
             <Modal
                 visible={showPicker}
                 transparent
-                animationType="slide"
+                animationType="fade"
                 onRequestClose={() => setShowPicker(false)}
             >
-                <View style={styles.pickerContainer}>
-                    <View style={styles.pickerHeader}>
-                        <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>
-                            {label}
-                        </Text>
-                        <TouchableOpacity onPress={() => setShowPicker(false)}>
-                            <Text style={{ color: t.colors.primary, fontSize: 16, fontWeight: 'bold' }}>
-                                Done
-                            </Text>
-                        </TouchableOpacity>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' }}>
+                    <View style={{ backgroundColor: '#1a1a1a', borderRadius: 12, padding: 10, width: '80%', maxWidth: 300, maxHeight: 400 }}>
+                        <ScrollView nestedScrollEnabled={true}>
+                            {options.map((opt, idx) => (
+                                <TouchableOpacity
+                                    key={opt}
+                                    onPress={() => {
+                                        onValueChange(opt);
+                                        setShowPicker(false);
+                                    }}
+                                    style={{
+                                        padding: 12,
+                                        borderBottomWidth: 1,
+                                        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+                                        backgroundColor: opt === value ? 'rgba(144, 238, 144, 0.3)' : 'transparent',
+                                    }}
+                                >
+                                    <Text style={{ color: opt === value ? '#90EE90' : 'white', fontSize: 14, fontWeight: opt === value ? 'bold' : 'normal' }}>
+                                        {displayOptions[idx]}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
                     </View>
-                    <Picker
-                        selectedValue={value}
-                        onValueChange={(itemValue) => {
-                            onValueChange(itemValue);
-                            setShowPicker(false);
-                        }}
-                        style={{ backgroundColor: '#333', color: 'white' }}
-                    >
-                        {options.map((opt, idx) => (
-                            <Picker.Item key={opt} label={displayOptions[idx]} value={opt} />
-                        ))}
-                    </Picker>
                 </View>
             </Modal>
         </>

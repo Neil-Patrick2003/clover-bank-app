@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, StatusBar, FlatList, Alert, TouchableOpacity, ScrollView, Platform, Modal, Picker } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, StatusBar, FlatList, Alert, TouchableOpacity, ScrollView, Platform, Modal } from 'react-native';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Card, Button, Input } from '../../components/ui';
@@ -11,46 +11,11 @@ const ACCOUNT_TYPES = ['savings', 'current', 'time_deposit'];
 const ACCOUNT_TYPES_DISPLAY = ['Savings', 'Current', 'Time Deposit'];
 const CURRENCIES = ['PHP', 'USD', 'EUR'];
 
-// --- CUSTOM SELECT COMPONENT (Web & Mobile) ---
+// --- CUSTOM SELECT COMPONENT (Compact Dropdown) ---
 const Select = ({ label, value, options, displayOptions, onValueChange, t }) => {
     const [showPicker, setShowPicker] = useState(false);
     const displayValue = displayOptions ? displayOptions[options.indexOf(value)] || value : value;
 
-    if (Platform.OS === 'web') {
-        return (
-            <View style={{ width: '100%' }}>
-                <select
-                    value={value}
-                    onChange={(e) => onValueChange(e.target.value)}
-                    style={{
-                        width: '100%',
-                        padding: '12px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        borderRadius: '8px',
-                        borderWidth: '1.5px',
-                        borderColor: value ? t.colors.primary : 'rgba(255, 255, 255, 0.5)',
-                        borderStyle: 'solid',
-                        color: 'white',
-                        fontSize: '16px',
-                        fontFamily: 'inherit',
-                        boxSizing: 'border-box',
-                        cursor: 'pointer',
-                    }}
-                >
-                    <option value="" style={{ color: '#333' }}>
-                        {label}
-                    </option>
-                    {options.map((opt, idx) => (
-                        <option key={opt} value={opt} style={{ color: '#333' }}>
-                            {displayOptions ? displayOptions[idx] : opt}
-                        </option>
-                    ))}
-                </select>
-            </View>
-        );
-    }
-
-    // Mobile picker
     return (
         <>
             <TouchableOpacity onPress={() => setShowPicker(true)} style={{ width: '100%' }}>
@@ -70,32 +35,33 @@ const Select = ({ label, value, options, displayOptions, onValueChange, t }) => 
             <Modal
                 visible={showPicker}
                 transparent
-                animationType="slide"
+                animationType="fade"
                 onRequestClose={() => setShowPicker(false)}
             >
-                <View style={styles.pickerContainer}>
-                    <View style={styles.pickerHeader}>
-                        <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>
-                            {label}
-                        </Text>
-                        <TouchableOpacity onPress={() => setShowPicker(false)}>
-                            <Text style={{ color: t.colors.primary, fontSize: 16, fontWeight: 'bold' }}>
-                                Done
-                            </Text>
-                        </TouchableOpacity>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' }}>
+                    <View style={{ backgroundColor: '#1a1a1a', borderRadius: 12, padding: 10, width: '80%', maxWidth: 300, maxHeight: 400 }}>
+                        <ScrollView nestedScrollEnabled={true}>
+                            {options.map((opt, idx) => (
+                                <TouchableOpacity
+                                    key={opt}
+                                    onPress={() => {
+                                        onValueChange(opt);
+                                        setShowPicker(false);
+                                    }}
+                                    style={{
+                                        padding: 12,
+                                        borderBottomWidth: 1,
+                                        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+                                        backgroundColor: opt === value ? 'rgba(144, 238, 144, 0.3)' : 'transparent',
+                                    }}
+                                >
+                                    <Text style={{ color: opt === value ? '#90EE90' : 'white', fontSize: 14, fontWeight: opt === value ? 'bold' : 'normal' }}>
+                                        {displayOptions ? displayOptions[idx] : opt}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
                     </View>
-                    <Picker
-                        selectedValue={value}
-                        onValueChange={(itemValue) => {
-                            onValueChange(itemValue);
-                            setShowPicker(false);
-                        }}
-                        style={{ backgroundColor: '#333', color: 'white' }}
-                    >
-                        {options.map((opt, idx) => (
-                            <Picker.Item key={opt} label={displayOptions ? displayOptions[idx] : opt} value={opt} />
-                        ))}
-                    </Picker>
                 </View>
             </Modal>
         </>
