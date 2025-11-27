@@ -68,7 +68,6 @@ function AppTabs() {
       <Tabs.Screen name="Deposit" component={DepositScreen} />
       <Tabs.Screen name="Transfer" component={TransferScreen} />
       <Tabs.Screen name="Billers" component={BillersScreen} />
-      <Tabs.Screen name="Beneficiaries" component={BeneficiariesScreen} />
     </Tabs.Navigator>
   );
 }
