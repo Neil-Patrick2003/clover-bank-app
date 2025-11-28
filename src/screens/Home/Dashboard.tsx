@@ -17,6 +17,7 @@ import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Card } from '../../components/ui';
 
+
 type Account = {
   id: number | string;
   account_number: string;
@@ -132,6 +133,12 @@ const BankCardTotal = ({ primaryBalance, totalBalanceByCurrency, currencyFormatt
 
 
 export default function DashboardScreen({ navigation }) {
+
+  const handleCreateAccount = () =>{
+    navigation.navigate('CreateApplication');
+  }; 
+
+
   const t = useTheme();
   const { user, booting } = useContext(AuthContext); 
   
@@ -387,12 +394,12 @@ export default function DashboardScreen({ navigation }) {
               You can open a new account to get started.
             </Text>
             <Pressable
-              onPress={() => navigation.navigate('OpenAccount')}
+              onPress={() => navigation.navigate('CreateApplication' as never)}
               accessibilityRole="button"
               style={[styles.emptyButton, { backgroundColor: t.colors.primary }]}
-            >
-              <Text style={styles.emptyButtonText}>Open New Account</Text>
-            </Pressable>
+          >
+            <Text style={styles.emptyButtonText}>Open New Account</Text>
+          </Pressable>
           </>
         )
       }
