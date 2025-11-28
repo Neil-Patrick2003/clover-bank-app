@@ -88,7 +88,7 @@ const BankCardTotal = ({ primaryBalance, totalBalanceByCurrency, currencyFormatt
               <View>
                 <Text style={cardStyles.balanceLabel}>Current Balance</Text>
                 {isZeroOrNegative && !isBalanceHidden ? (
-                    <Text style={cardStyles.primaryBalanceText}>ZERO BALANCE</Text>
+                    <Text style={cardStyles.primaryBalanceText}>00.00</Text>
                 ) : (
                     <Text style={cardStyles.primaryBalanceText}>
                         {displayAmount}
@@ -397,9 +397,9 @@ export default function DashboardScreen({ navigation }) {
               onPress={() => navigation.navigate('CreateApplication' as never)}
               accessibilityRole="button"
               style={[styles.emptyButton, { backgroundColor: t.colors.primary }]}
-          >
-            <Text style={styles.emptyButtonText}>Open New Account</Text>
-          </Pressable>
+            >
+              <Text style={styles.emptyButtonText}>Open New Account</Text>
+            </Pressable>
           </>
         )
       }
@@ -473,19 +473,12 @@ export default function DashboardScreen({ navigation }) {
             {filtered.length > 0 && ` (${filtered.length})`}
           </Text>
           <Pressable
-            onPress={onRefresh}
-            accessibilityRole="button"
-            disabled={refreshing || loading}
-            android_ripple={{ color: '#00000010', borderless: true }}
-            style={styles.refreshButton}
-          >
-            {refreshing ? (
-              <ActivityIndicator size="small" color={t.colors.primary} />
-            ) : (
-              <Text style={[styles.refreshText, { color: t.colors.primary }]}>{loading ? '' : 'refresh'}</Text>
-            )}
-
-          </Pressable>
+              onPress={() => navigation.navigate('CreateApplication' as never)}
+              accessibilityRole="button"
+              style={[styles.emptyButton, { backgroundColor: t.colors.primary }]}
+            >
+              <Text style={styles.emptyButtonText}>Open New Account</Text>
+            </Pressable>
         </View>
 
         {loading && !refreshing ? (

@@ -629,7 +629,7 @@ export default function TransferScreen() {
                   },
                 ]}
               >
-                 <Text
+                <Text
                   style={{
                     color: mutedColor,
                     fontWeight: '600',

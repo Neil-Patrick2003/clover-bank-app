@@ -1,11 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, ImageBackground, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
-import { Card, Button } from '../../components/ui';
-
-// You'll need an actual image file. Use the path you set up.
-const BACKGROUND_IMAGE = require('../../../assets/background_image.png'); 
+import { Button } from '../../components/ui';
 
 export default function CreateApplicationScreen({ navigation }) {
   const t = useTheme();
@@ -21,104 +18,210 @@ export default function CreateApplicationScreen({ navigation }) {
   };
 
   return (
-    <ImageBackground 
-      source={BACKGROUND_IMAGE} 
-      style={styles.imageBackground}
-      resizeMode="cover" 
-    >
-      {/* Set status bar style for contrast against the background image */}
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <View style={[styles.container, { backgroundColor: t.colors.background }]}>
       
-      {/* Centered Content Wrapper */}
-      <View style={styles.contentWrapper}>
-          
-          {/* --- SIMULATED GLASSMORHISM CARD --- */}
-          {/* Using styles defined in the StyleSheet for clean code */}
-          <Card style={[styles.glassCard, { gap: 20 }]}> 
-            
-            {/* Title Block */}
-            <Text style={styles.subHeader}>NEW APPLICATION</Text>
-            <Text style={styles.header}>
-                Open Your Account Today
-            </Text>
-            
-            {/* Descriptive Text */}
-            <Text style={styles.bodyText}>
-                We're excited to have you! This process will guide you through collecting your necessary KYC (Know Your Customer) details and selecting the bank accounts you wish to open.
-            </Text>
-            <Text style={[styles.bodyText, { marginTop: -5 }]}>
-                The application should take less than 5 minutes.
-            </Text>
-
-            {/* Primary Action Button (Green Focus) */}
-            <Button 
-                title="Start Application" 
-                onPress={start} 
-                color={t.colors.primary} // Use theme primary color for the button fill
-                // Ensure the button text is bright white for contrast
-                textStyle={{ color: 'white', fontWeight: 'bold' }} 
-                style={{ marginTop: 15 }} 
-            />
-            
-          </Card>
+      {/* Header Section - Compact */}
+      <View style={styles.header}>
+        <View style={[styles.iconContainer, { backgroundColor: t.colors.primary + '20' }]}>
+          <Text style={styles.icon}>🏦</Text>
+        </View>
+        <Text style={[styles.title, { color: t.colors.text }]}>
+          Open Your Account
+        </Text>
+        <Text style={[styles.subtitle, { color: t.colors.textSecondary }]}>
+          Get started in just 5 minutes
+        </Text>
       </View>
-    </ImageBackground>
+
+      {/* Features Section - Compact */}
+      <View style={styles.featuresSection}>
+        <View style={styles.featureRow}>
+          <View style={[styles.featureIcon, { backgroundColor: t.colors.primary + '20' }]}>
+            <Text style={[styles.featureEmoji, { color: t.colors.primary }]}>⚡</Text>
+          </View>
+          <View style={styles.featureText}>
+            <Text style={[styles.featureTitle, { color: t.colors.text }]}>Quick Process</Text>
+            <Text style={[styles.featureDesc, { color: t.colors.textSecondary }]}>5-minute application</Text>
+          </View>
+        </View>
+
+        <View style={styles.featureRow}>
+          <View style={[styles.featureIcon, { backgroundColor: t.colors.primary + '20' }]}>
+            <Text style={[styles.featureEmoji, { color: t.colors.primary }]}>🔒</Text>
+          </View>
+          <View style={styles.featureText}>
+            <Text style={[styles.featureTitle, { color: t.colors.text }]}>Secure & Safe</Text>
+            <Text style={[styles.featureDesc, { color: t.colors.textSecondary }]}>Bank-level security</Text>
+          </View>
+        </View>
+
+        <View style={styles.featureRow}>
+          <View style={[styles.featureIcon, { backgroundColor: t.colors.primary + '20' }]}>
+            <Text style={[styles.featureEmoji, { color: t.colors.primary }]}>📱</Text>
+          </View>
+          <View style={styles.featureText}>
+            <Text style={[styles.featureTitle, { color: t.colors.text }]}>Mobile Friendly</Text>
+            <Text style={[styles.featureDesc, { color: t.colors.textSecondary }]}>Optimized for your device</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Process Steps - Compact */}
+      <View style={styles.processSection}>
+        <Text style={[styles.processTitle, { color: t.colors.text }]}>Simple 3-step process:</Text>
+        
+        <View style={styles.steps}>
+          <View style={styles.step}>
+            <View style={[styles.stepNumber, { backgroundColor: t.colors.primary }]}>
+              <Text style={styles.stepNumberText}>1</Text>
+            </View>
+            <Text style={[styles.stepText, { color: t.colors.text }]}>Start Application</Text>
+          </View>
+          
+          <View style={styles.step}>
+            <View style={[styles.stepNumber, { backgroundColor: t.colors.primary }]}>
+              <Text style={styles.stepNumberText}>2</Text>
+            </View>
+            <Text style={[styles.stepText, { color: t.colors.text }]}>Complete KYC</Text>
+          </View>
+          
+          <View style={styles.step}>
+            <View style={[styles.stepNumber, { backgroundColor: t.colors.primary }]}>
+              <Text style={styles.stepNumberText}>3</Text>
+            </View>
+            <Text style={[styles.stepText, { color: t.colors.text }]}>Choose Banks</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* CTA Section - Compact */}
+      <View style={styles.ctaSection}>
+        <Button 
+          title="Start Application Now" 
+          onPress={start} 
+          color={t.colors.primary}
+          style={styles.button}
+        />
+        
+        <Text style={[styles.securityText, { color: t.colors.textSecondary }]}>
+          🔒 Your information is secure and encrypted
+        </Text>
+      </View>
+
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  imageBackground: {
+  container: {
     flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  contentWrapper: {
-    flex: 1,
-    paddingHorizontal: 24,
     justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1, // Ensure content is on top
-  },
-  // --- GLASSMORHISM STYLES ---
-  glassCard: {
-    width: '100%',
-    maxWidth: 400,
-    padding: 30, 
-    borderRadius: 12, 
-    // Glass Effect: Semi-transparent white background
-    backgroundColor: 'rgba(255, 255, 255, 0.15)', 
-    
-    // Border for the "frosted" edge look
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)', 
-    
-    // Subtle shadow for lift and depth
-    shadowColor: 'rgba(0, 0, 0, 0.2)', 
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
-    elevation: 15,
-  },
-  // --- TEXT STYLES (Optimized for Contrast on Dark/Blurred Background) ---
-  subHeader: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#90EE90', // Lighter green for sharp contrast
-    marginBottom: 5,
-    textAlign: 'center',
-    letterSpacing: 1.5,
+    paddingHorizontal: 24,
+    paddingVertical: 22
   },
   header: {
-    fontSize: 28,
-    fontWeight: '900',
-    textAlign: 'center',
-    marginBottom: 10,
-    color: 'white', // Ensure high contrast
+    alignItems: 'center',
+    marginBottom: 25,
   },
-  bodyText: {
-    fontSize: 16,
-    lineHeight: 24,
+  iconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  icon: {
+    fontSize: 24,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
     textAlign: 'center',
-    color: 'rgba(255, 255, 255, 0.85)', // Slightly translucent white for body
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  featuresSection: {
+    marginBottom: 20,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.02)',
+  },
+  featureIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  featureEmoji: {
+    fontSize: 16,
+  },
+  featureText: {
+    flex: 1,
+  },
+  featureTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  featureDesc: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  processSection: {
+    marginBottom: 20,
+  },
+  processTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  steps: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  step: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  stepNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  stepNumberText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  stepText: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  ctaSection: {
+    alignItems: 'center',
+  },
+  button: {
+    width: '100%',
+    marginBottom: 12,
+  },
+  securityText: {
+    fontSize: 12,
+    textAlign: 'center',
   },
 });

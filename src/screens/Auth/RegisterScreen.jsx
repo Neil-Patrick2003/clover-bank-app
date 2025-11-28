@@ -1,21 +1,19 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
-import { Input, Button, Card } from '../../components/ui';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { Input, Button } from '../../components/ui';
 import { useTheme } from '../../theme/ThemeProvider';
 import { AuthContext } from '../../context/AuthContext';
 
-// --- CUSTOM ICON COMPONENT (The Toggle) ---
 const Icon = ({ name, size, color, onPress }) => (
     <TouchableOpacity 
         onPress={onPress} 
         style={{ 
-            padding: 10, 
+            padding: 8,
             justifyContent: 'center', 
             alignItems: 'center',
-            minWidth: 44,
-            minHeight: 44,
-            borderRadius: 8,
-            marginLeft: -8
+            minWidth: 40,
+            minHeight: 40,
+            borderRadius: 6,
         }}
         activeOpacity={0.6}
     >
@@ -30,7 +28,6 @@ const Icon = ({ name, size, color, onPress }) => (
     </TouchableOpacity>
 );
 
-// --- PASSWORD VALIDATION LOGIC ---
 const validatePassword = (password) => {
     const minLength = 8;
     const hasUpperCase = /[A-Z]/.test(password);
@@ -46,25 +43,54 @@ const validatePassword = (password) => {
     };
 };
 
-// --- PASSWORD REQUIREMENT ITEM COMPONENT (Modified for simple list) ---
 const RequirementItem = ({ fulfilled, requirementText, t }) => (
-    <View style={styles.simpleRequirementRow}>
-        <Text style={{ 
-            color: fulfilled ? t.colors.primary : t.colors.textSecondary,
-            marginRight: 8,
-            fontSize: 12, // Small text size
-        }}>
-            {fulfilled ? '✅' : '•'}
-        </Text>
-        <Text style={{ 
-            color: fulfilled ? t.colors.primary : t.colors.textSecondary,
-            fontSize: 12, // Small text size
-        }}>
+    <View style={styles.requirementRow}>
+        <View style={[
+            styles.requirementDot,
+            { backgroundColor: fulfilled ? t.colors.primary : t.colors.border }
+        ]} />
+        <Text style={[
+            styles.requirementText,
+            { 
+                color: fulfilled ? t.colors.primary : t.colors.textSecondary,
+                fontWeight: fulfilled ? '600' : '400'
+            }
+        ]}>
             {requirementText}
         </Text>
     </View>
 );
 
+const PasswordStrength = ({ strength, t }) => {
+    const getStrengthColor = () => {
+        if (strength === 'strong') return t.colors.success;
+        if (strength === 'medium') return t.colors.warning;
+        return t.colors.error;
+    };
+
+    const getStrengthText = () => {
+        if (strength === 'strong') return 'Strong password';
+        if (strength === 'medium') return 'Medium strength';
+        return 'Weak password';
+    };
+
+    return (
+        <View style={styles.strengthContainer}>
+            <View style={styles.strengthBar}>
+                <View style={[
+                    styles.strengthFill,
+                    { 
+                        width: strength === 'strong' ? '100%' : strength === 'medium' ? '66%' : '33%',
+                        backgroundColor: getStrengthColor()
+                    }
+                ]} />
+            </View>
+            <Text style={[styles.strengthText, { color: getStrengthColor() }]}>
+                {getStrengthText()}
+            </Text>
+        </View>
+    );
+};
 
 export default function RegisterScreen({ navigation }) {
     const t = useTheme();
@@ -75,195 +101,293 @@ export default function RegisterScreen({ navigation }) {
     const [password, setPassword] = useState('');
     const [msg, setMsg] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     
     const validation = validatePassword(password);
+    const passwordStrength = validation.isStrong ? 'strong' : 
+                           (validation.minLength && (validation.hasUpperCase || validation.hasLowerCase)) ? 'medium' : 'weak';
 
     const submit = async () => {
         setMsg('');
+        setIsLoading(true);
 
         if (!validation.isStrong) {
-            setMsg('Password does not meet all security requirements.');
+            setMsg('Please meet all password requirements to continue.');
+            setIsLoading(false);
             return;
         }
 
         try {
             await register(username.trim(), email.trim(), password);
         } catch (e) {
-            const m = e?.response?.data?.message || (e?.response?.data?.errors ? JSON.stringify(e.response.data.errors) : 'Register failed');
+            const m = e?.response?.data?.message || (e?.response?.data?.errors ? JSON.stringify(e.response.data.errors) : 'Registration failed');
             setMsg(m);
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: t.colors.bg }]}>
-
-            {/* Aesthetic Background Element (Green Touch) */}
-            <View style={[
-                styles.backgroundShape,
-                { backgroundColor: t.colors.primary, opacity: 0.15 }
-            ]} />
-
-            {/* Centered Form Card */}
-            <View style={styles.contentWrapper}>
-                <Card style={[styles.card, { gap: 15 }]}>
-
-                    {/* Header */}
-                    <Text style={styles.subHeader}>GET STARTED</Text>
-                    <Text style={[styles.header, { color: t.colors.text }]}>
-                        Create Your Account
+        <View style={[styles.container, { backgroundColor: t.colors.background }]}>
+            <KeyboardAvoidingView 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.keyboardAvoid}
+            >
+                {/* Header Section - Compact */}
+                <View style={styles.headerSection}>
+                    <Text style={[styles.welcomeText, { color: t.colors.text }]}>
+                        Create account
                     </Text>
+                    <Text style={[styles.subtitle, { color: t.colors.textSecondary }]}>
+                        Join us today
+                    </Text>
+                </View>
 
-                    {/* Username and Email */}
-                    <Input
-                        placeholder="Username"
-                        value={username}
-                        onChangeText={setUsername}
-                    />
-                    <Input
-                        placeholder="Email Address"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
+                {/* Form Section - Compact */}
+                <View style={styles.formSection}>
+                    {/* Username Input */}
+                    <View style={styles.inputContainer}>
+                        <Text style={[styles.inputLabel, { color: t.colors.text }]}>
+                            Username
+                        </Text>
+                        <Input
+                            placeholder="Choose a username"
+                            value={username}
+                            onChangeText={setUsername}
+                            autoCapitalize="none"
+                            style={[styles.input, { borderColor: t.colors.border }]}
+                        />
+                    </View>
 
-                    {/* PASSWORD INPUT WITH SHOW/HIDE LOGIC */}
-                    <Input
-                        placeholder="Password"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry={!showPassword}
-                        rightIcon={
-                            <Icon
-                                name={showPassword ? 'eye' : 'eye-off'}
-                                size={20}
-                                color={t.colors.textSecondary}
-                                onPress={() => setShowPassword(!showPassword)}
-                            />
-                        }
-                    />
-                    
-                    {/* --- PASSWORD STRENGTH FEEDBACK (Simple List) --- */}
+                    {/* Email Input */}
+                    <View style={styles.inputContainer}>
+                        <Text style={[styles.inputLabel, { color: t.colors.text }]}>
+                            Email
+                        </Text>
+                        <Input
+                            placeholder="Enter your email"
+                            value={email}
+                            onChangeText={setEmail}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            style={[styles.input, { borderColor: t.colors.border }]}
+                        />
+                    </View>
+
+                    {/* Password Input */}
+                    <View style={styles.inputContainer}>
+                        <Text style={[styles.inputLabel, { color: t.colors.text }]}>
+                            Password
+                        </Text>
+                        <Input
+                            placeholder="Create a strong password"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry={!showPassword}
+                            rightIcon={
+                                <Icon
+                                    name={showPassword ? 'eye' : 'eye-off'}
+                                    size={18}
+                                    color={t.colors.textSecondary}
+                                    onPress={() => setShowPassword(!showPassword)}
+                                />
+                            }
+                            style={[styles.input, { borderColor: t.colors.border }]}
+                        />
+                        
+                        {/* Password Strength Indicator */}
+                        {password.length > 0 && (
+                            <PasswordStrength strength={passwordStrength} t={t} />
+                        )}
+                    </View>
+
+                    {/* Password Requirements - Compact */}
                     {password.length > 0 && (
-                        <View style={styles.validationBox}>
-                            <Text style={[styles.validationTitle, { color: t.colors.text }]}>Password Requirements:</Text>
-                            {/* Simple List Items */}
-                            <RequirementItem 
-                                fulfilled={validation.minLength} 
-                                requirementText="Minimum 8 characters" 
-                                t={t}
-                            />
-                            <RequirementItem 
-                                fulfilled={validation.hasUpperCase} 
-                                requirementText="One uppercase letter" 
-                                t={t}
-                            />
-                            <RequirementItem 
-                                fulfilled={validation.hasLowerCase} 
-                                requirementText="One lowercase letter" 
-                                t={t}
-                            />
-                            <RequirementItem 
-                                fulfilled={validation.hasNumberOrSymbol} 
-                                requirementText="One number or symbol" 
-                                t={t}
-                            />
+                        <View style={styles.requirementsContainer}>
+                            <Text style={[styles.requirementsTitle, { color: t.colors.text }]}>
+                                Password must contain:
+                            </Text>
+                            <View style={styles.requirementsGrid}>
+                                <RequirementItem 
+                                    fulfilled={validation.minLength} 
+                                    requirementText="8+ characters" 
+                                    t={t}
+                                />
+                                <RequirementItem 
+                                    fulfilled={validation.hasUpperCase} 
+                                    requirementText="Uppercase letter" 
+                                    t={t}
+                                />
+                                <RequirementItem 
+                                    fulfilled={validation.hasLowerCase} 
+                                    requirementText="Lowercase letter" 
+                                    t={t}
+                                />
+                                <RequirementItem 
+                                    fulfilled={validation.hasNumberOrSymbol} 
+                                    requirementText="Number or symbol" 
+                                    t={t}
+                                />
+                            </View>
                         </View>
                     )}
 
-
                     {/* Error Message */}
                     {msg ? (
-                        <Text style={styles.errorText}>{msg}</Text>
+                        <Text style={[styles.errorText, { color: t.colors.error }]}>{msg}</Text>
                     ) : null}
 
-                    {/* Buttons */}
+                    {/* Register Button */}
                     <Button
-                        title="Register"
+                        title={isLoading ? "Creating account..." : "Create account"}
                         onPress={submit}
                         color={t.colors.primary}
-                        style={{ marginTop: 10 }}
-                        disabled={!validation.isStrong} 
+                        style={styles.registerButton}
+                        disabled={!validation.isStrong || isLoading}
                     />
-                    <Button
-                        title="Back to Login"
-                        variant="ghost"
-                        onPress={() => navigation.goBack()}
-                        color={t.colors.primary}
-                    />
-                </Card>
-            </View>
-        </SafeAreaView>
+
+                    {/* Sign In Link */}
+                    <View style={styles.signInContainer}>
+                        <Text style={[styles.signInText, { color: t.colors.textSecondary }]}>
+                            Already have an account?{' '}
+                        </Text>
+                        <TouchableOpacity onPress={() => navigation.goBack()}>
+                            <Text style={[styles.signInLink, { color: t.colors.primary }]}>
+                                Sign in
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* Background Accent Elements - Smaller */}
+                <View style={[styles.backgroundAccent, { backgroundColor: t.colors.primary }]} />
+                <View style={[styles.backgroundAccent2, { backgroundColor: t.colors.primary }]} />
+                
+            </KeyboardAvoidingView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        overflow: 'hidden',
     },
-    contentWrapper: {
+    keyboardAvoid: {
         flex: 1,
-        paddingHorizontal: 24,
         justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 1,
     },
-    card: {
-        width: '100%',
-        maxWidth: 400,
-        padding: 30,
-        borderRadius: 12,
-        elevation: 8,
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
+    headerSection: {
+        paddingHorizontal: 24,
+        paddingBottom: 30,
     },
-    subHeader: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#6aa84f',
-        marginBottom: 5,
-        textAlign: 'center',
-        letterSpacing: 1.5,
-    },
-    header: {
-        fontSize: 26,
-        fontWeight: '900',
-        textAlign: 'center',
-        marginBottom: 20,
-    },
-    errorText: {
-        color: '#b91c1c',
-        textAlign: 'center',
-        fontSize: 14,
-        marginTop: 5,
-    },
-    // --- PASSWORD VALIDATION STYLES ---
-    validationBox: {
-        backgroundColor: '#f9f9f9', 
-        borderRadius: 8,
-        padding: 12,
-        marginVertical: 5,
-        borderWidth: 1,
-        borderColor: '#eee',
-    },
-    validationTitle: {
-        fontSize: 14,
+    welcomeText: {
+        fontSize: 24,
         fontWeight: '700',
+        marginBottom: 6,
+        textAlign: 'center',
+    },
+    subtitle: {
+        fontSize: 14,
+        fontWeight: '400',
+        textAlign: 'center',
+    },
+    formSection: {
+        paddingHorizontal: 24,
+    },
+    inputContainer: {
+        marginBottom: 16,
+    },
+    inputLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        marginBottom: 6,
+    },
+    input: {
+        borderWidth: 1.5,
+    },
+    requirementsContainer: {
+        marginTop: 6,
+        marginBottom: 12,
+    },
+    requirementsTitle: {
+        fontSize: 13,
+        fontWeight: '600',
         marginBottom: 8,
     },
-    simpleRequirementRow: { // NEW STYLE FOR SIMPLE LIST
+    requirementsGrid: {
+        gap: 6,
+    },
+    requirementRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginVertical: 2, // Tight spacing for a small list
     },
-    // --- BACKGROUND STYLES ---
-    backgroundShape: {
+    requirementDot: {
+        width: 5,
+        height: 5,
+        borderRadius: 2.5,
+        marginRight: 8,
+    },
+    requirementText: {
+        fontSize: 12,
+    },
+    strengthContainer: {
+        marginTop: 6,
+    },
+    strengthBar: {
+        height: 3,
+        backgroundColor: '#e5e7eb',
+        borderRadius: 1.5,
+        overflow: 'hidden',
+        marginBottom: 4,
+    },
+    strengthFill: {
+        height: '100%',
+        borderRadius: 1.5,
+    },
+    strengthText: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    errorText: {
+        fontSize: 13,
+        textAlign: 'center',
+        marginBottom: 12,
+        fontWeight: '500',
+    },
+    registerButton: {
+        marginTop: 6,
+        marginBottom: 16,
+    },
+    signInContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    signInText: {
+        fontSize: 14,
+    },
+    signInLink: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    backgroundAccent: {
         position: 'absolute',
-        top: -100,
-        left: -100,
-        width: 300,
-        height: 300,
-        borderRadius: 150,
+        top: -30,
+        right: -30,
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        opacity: 0.05,
+        zIndex: -1,
+    },
+    backgroundAccent2: {
+        position: 'absolute',
+        bottom: -40,
+        left: -40,
+        width: 150,
+        height: 150,
+        borderRadius: 75,
+        opacity: 0.03,
+        zIndex: -1,
     },
 });

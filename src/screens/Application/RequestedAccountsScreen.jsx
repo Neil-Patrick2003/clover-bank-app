@@ -7,8 +7,8 @@ import { Card, Button, Input } from '../../components/ui';
 const BACKGROUND_IMAGE = require('../../../assets/background_image.png'); 
 
 // --- SELECTOR OPTIONS (Database values and display names) ---
-const ACCOUNT_TYPES = ['savings', 'current', 'time_deposit'];
-const ACCOUNT_TYPES_DISPLAY = ['Savings', 'Current', 'Time Deposit'];
+const ACCOUNT_TYPES = ['savings', 'current'];
+const ACCOUNT_TYPES_DISPLAY = ['Savings', 'Current'];
 const CURRENCIES = ['PHP', 'USD', 'EUR'];
 
 // --- CUSTOM SELECT COMPONENT (Compact Dropdown) ---

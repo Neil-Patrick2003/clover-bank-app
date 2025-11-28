@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { AuthContext } from '../../context/AuthContext';
 import { api } from '../../api/client';
 import { useTheme } from '../../theme/ThemeProvider';
+import { Card, Button } from '../../components/ui';
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout } = useContext(AuthContext);
@@ -74,16 +75,6 @@ export default function ProfileScreen({ navigation }) {
   const handleLogout = () => {
     console.log('Logout button pressed!');
     
-    const confirmLogout = () => {
-      // Use window.confirm for web, Alert.alert for mobile
-      if (Platform.OS === 'web') {
-        return window.confirm('Are you sure you want to logout?');
-      } else {
-        // For mobile, we'll handle this differently
-        return true;
-      }
-    };
-
     // For mobile platforms, show Alert
     if (Platform.OS !== 'web') {
       Alert.alert(
@@ -100,7 +91,7 @@ export default function ProfileScreen({ navigation }) {
       );
     } else {
       // For web, use window.confirm
-      if (confirmLogout()) {
+      if (window.confirm('Are you sure you want to logout?')) {
         performLogout();
       } else {
         console.log('Logout cancelled');
@@ -128,94 +119,70 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
+  const InfoRow = ({ label, value }) => (
+    <View style={styles.infoRow}>
+      <Text style={[styles.label, { color: t.colors.sub }]}>{label}</Text>
+      <Text style={[styles.value, { color: t.colors.text }]}>{value || 'N/A'}</Text>
+    </View>
+  );
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: t.colors.bg }]}>
-      <View style={[styles.section, { borderBottomColor: t.colors.border }]}>
+      {/* Account Information Card */}
+      <Card style={styles.card}>
         <Text style={[styles.sectionTitle, { color: t.colors.text }]}>Account Information</Text>
         
-        <View style={styles.infoRow}>
-          <Text style={[styles.label, { color: t.colors.sub }]}>Name</Text>
-          <Text style={[styles.value, { color: t.colors.text }]}>{user?.username || user?.name || 'N/A'}</Text>
-        </View>
+        <InfoRow label="Name" value={user?.username || user?.name} />
+        <InfoRow label="Email" value={user?.email} />
+        <InfoRow label="Account Number" value={accountNumber || user?.account_number || user?.id} />
+      </Card>
 
-        <View style={styles.infoRow}>
-          <Text style={[styles.label, { color: t.colors.sub }]}>Email</Text>
-          <Text style={[styles.value, { color: t.colors.text }]}>{user?.email || 'N/A'}</Text>
-        </View>
-
-        <View style={styles.infoRow}>
-          <Text style={[styles.label, { color: t.colors.sub }]}>Account Number</Text>
-          <Text style={[styles.value, { color: t.colors.text }]}>{accountNumber || user?.account_number || user?.id || 'N/A'}</Text>
-        </View>
-      </View>
-
-      <View style={[styles.section, { borderBottomColor: t.colors.border }]}>
+      {/* KYC Profile Card */}
+      <Card style={styles.card}>
         <Text style={[styles.sectionTitle, { color: t.colors.text }]}>KYC Profile</Text>
         
         {loading ? (
-          <ActivityIndicator size="large" color={t.colors.primary} style={styles.loader} />
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color={t.colors.primary} />
+            <Text style={[styles.loadingText, { color: t.colors.sub }]}>Loading KYC data...</Text>
+          </View>
         ) : error ? (
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle-outline" size={24} color="#ef4444" />
             <Text style={[styles.errorText, { color: '#ef4444' }]}>{error}</Text>
-            <Pressable
+            <Button
+              title="Retry"
               onPress={fetchProfileData}
-              style={[styles.retryButton, { backgroundColor: t.colors.primary }]}
-            >
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </Pressable>
+              style={styles.retryButton}
+              variant="ghost"
+              color={t.colors.primary}
+            />
           </View>
         ) : kycData ? (
           <>
-            <View style={styles.infoRow}>
-              <Text style={[styles.label, { color: t.colors.sub }]}>Full Name</Text>
-              <Text style={[styles.value, { color: t.colors.text }]}>{kycData.full_name || user?.username || 'N/A'}</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={[styles.label, { color: t.colors.sub }]}>KYC Level</Text>
-              <Text style={[styles.value, { color: t.colors.text }]}>{kycData.kyc_level || kycData.level || 'N/A'}</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={[styles.label, { color: t.colors.sub }]}>ID Type</Text>
-              <Text style={[styles.value, { color: t.colors.text }]}>{kycData.id_type || 'N/A'}</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={[styles.label, { color: t.colors.sub }]}>ID Number</Text>
-              <Text style={[styles.value, { color: t.colors.text }]}>{kycData.id_number || 'N/A'}</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={[styles.label, { color: t.colors.sub }]}>Expiry Date</Text>
-              <Text style={[styles.value, { color: t.colors.text }]}>{kycData.expiry_date || kycData.id_expiry || 'N/A'}</Text>
-            </View>
+            <InfoRow label="Full Name" value={kycData.full_name || user?.username} />
+            <InfoRow label="KYC Level" value={kycData.kyc_level || kycData.level} />
+            <InfoRow label="ID Type" value={kycData.id_type} />
+            <InfoRow label="ID Number" value={kycData.id_number} />
+            <InfoRow label="Expiry Date" value={kycData.expiry_date || kycData.id_expiry} />
           </>
         ) : (
-          <Text style={[styles.noDataText, { color: t.colors.sub }]}>No KYC data available</Text>
+          <View style={styles.noDataContainer}>
+            <Ionicons name="document-outline" size={32} color={t.colors.sub} />
+            <Text style={[styles.noDataText, { color: t.colors.sub }]}>No KYC data available</Text>
+          </View>
         )}
-      </View>
+      </Card>
 
+      {/* Logout Button */}
       <View style={styles.buttonContainer}>
-        <Pressable
-          onPress={() => {
-            console.log('Logout Pressable tapped!');
-            handleLogout();
-          }}
+        <Button
+          title={loggingOut ? "Logging out..." : "Logout"}
+          onPress={handleLogout}
           disabled={loggingOut}
-          style={({ pressed }) => [styles.logoutButton, { backgroundColor: pressed || loggingOut ? '#cccccc' : '#ef4444', opacity: pressed ? 0.7 : 1 }]}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          {loggingOut ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <>
-              <Ionicons name="log-out-outline" size={20} color="#fff" />
-              <Text style={styles.logoutButtonText}>Logout</Text>
-            </>
-          )}
-        </Pressable>
+          style={styles.logoutButton}
+          color="#ef4444"
+        />
       </View>
     </ScrollView>
   );
@@ -227,15 +194,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 20,
   },
-  section: {
-    marginBottom: 24,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
+  card: {
+    marginBottom: 16,
+    gap: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   infoRow: {
     marginBottom: 12,
@@ -251,50 +217,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  loader: {
-    marginVertical: 20,
+  loaderContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   errorContainer: {
     alignItems: 'center',
     paddingVertical: 20,
+    gap: 12,
   },
   errorText: {
-    marginTop: 8,
     fontSize: 14,
-    marginBottom: 12,
     textAlign: 'center',
+    fontWeight: '500',
   },
   retryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 6,
+    marginTop: 8,
   },
-  retryButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+  noDataContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    gap: 8,
   },
   noDataText: {
     fontSize: 14,
     textAlign: 'center',
-    marginVertical: 20,
+    fontWeight: '500',
   },
   buttonContainer: {
+    marginTop: 8,
     marginBottom: 40,
-    marginTop: 20,
   },
   logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    gap: 8,
-  },
-  logoutButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+    backgroundColor: '#ef4444',
   },
 });

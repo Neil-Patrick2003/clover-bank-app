@@ -1,21 +1,19 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
-import { Input, Button, Card } from '../../components/ui';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { Input, Button } from '../../components/ui';
 import { useTheme } from '../../theme/ThemeProvider';
 import { AuthContext } from '../../context/AuthContext';
 
-// --- CUSTOM ICON COMPONENT (For Password Toggle) ---
 const Icon = ({ name, size, color, onPress }) => (
     <TouchableOpacity 
         onPress={onPress} 
         style={{ 
-            padding: 10, 
+            padding: 8,
             justifyContent: 'center', 
             alignItems: 'center',
-            minWidth: 44,
-            minHeight: 44,
-            borderRadius: 8,
-            marginLeft: -8
+            minWidth: 40,
+            minHeight: 40,
+            borderRadius: 6,
         }}
         activeOpacity={0.6}
     >
@@ -37,150 +35,228 @@ export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [msg, setMsg] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // New state for password toggle
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const submit = async () => {
     setMsg('');
+    setIsLoading(true);
     try { 
         await login(email.trim(), password); 
     }
     catch (e) { 
         setMsg(e?.response?.data?.message || 'Login failed'); 
+    } finally {
+        setIsLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: t.colors.bg }]}>
-      
-      {/* Aesthetic Background Element (Green Touch) */}
-      <View style={[
-          styles.backgroundShape, 
-          { backgroundColor: t.colors.primary, opacity: 0.15 } 
-      ]} />
-      
-      {/* Centered Form Card */}
-      <View style={styles.contentWrapper}>
-          <Card style={[styles.card, { 
-              gap: 15, // Increased spacing
-              borderColor: t.colors.border, 
-          }]}>
-            
-            {/* Header with Green Accent */}
-            <Text style={styles.subHeader}>SECURE ACCESS</Text>
-            <Text style={[styles.header, { color: t.colors.text }]}>
-                Welcome Back
+    <View style={[styles.container, { backgroundColor: t.colors.background }]}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoid}
+      >
+        
+        {/* Header Section - Compact */}
+        <View style={styles.headerSection}>
+          <Text style={[styles.welcomeText, { color: t.colors.text }]}>
+            Welcome back
+          </Text>
+          <Text style={[styles.subtitle, { color: t.colors.textSecondary }]}>
+            Sign in to continue
+          </Text>
+        </View>
+
+        {/* Form Section - Compact */}
+        <View style={styles.formSection}>
+          {/* Email Input */}
+          <View style={styles.inputContainer}>
+            <Text style={[styles.inputLabel, { color: t.colors.text }]}>
+              Email
             </Text>
-            
-            {/* Email Input */}
             <Input 
-                placeholder="Email Address" 
+                placeholder="Enter your email" 
                 value={email} 
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                style={[styles.input, { borderColor: t.colors.border }]}
             />
-            
-            {/* Password Input with Show/Hide Toggle */}
+          </View>
+          
+          {/* Password Input */}
+          <View style={styles.inputContainer}>
+            <View style={styles.passwordHeader}>
+              <Text style={[styles.inputLabel, { color: t.colors.text }]}>
+                Password
+              </Text>
+              <TouchableOpacity style={styles.forgotPassword}>
+                <Text style={{ color: t.colors.primary, fontSize: 13, fontWeight: '500' }}>
+                  Forgot?
+                </Text>
+              </TouchableOpacity>
+            </View>
             <Input 
-                placeholder="Password" 
+                placeholder="Enter your password" 
                 value={password} 
                 onChangeText={setPassword} 
-                // Toggle security based on state
                 secureTextEntry={!showPassword} 
                 rightIcon={
                     <Icon
                         name={showPassword ? 'eye' : 'eye-off'} 
-                        size={20}
+                        size={18}
                         color={t.colors.textSecondary}
                         onPress={() => setShowPassword(!showPassword)}
                     />
                 }
+                style={[styles.input, { borderColor: t.colors.border }]}
             />
-            
-            {/* Forgot Password Link (Common Modern Feature) */}
-            <TouchableOpacity style={styles.forgotPassword}>
-                <Text style={{ color: t.colors.primary, fontWeight: '600' }}>
-                    Forgot Password?
-                </Text>
-            </TouchableOpacity>
+          </View>
 
-            {/* Error Message */}
-            {msg ? (
-                <Text style={styles.errorText}>{msg}</Text>
-            ) : null}
-            
-            {/* Primary Action Button (Green Focus) */}
-            <Button 
-                title="Sign In" 
-                onPress={submit} 
-                color={t.colors.primary} 
-                style={{ marginTop: 10 }}
-            />
-            
-            {/* Secondary Action Button (Ghost/Outline) */}
-            <Button 
-                title="Create account" 
-                variant="ghost" 
-                onPress={() => navigation.navigate('Register')} 
-                color={t.colors.primary} 
-            />
-          </Card>
-      </View>
-    </SafeAreaView>
+          {/* Error Message */}
+          {msg ? (
+              <Text style={[styles.errorText, { color: t.colors.error }]}>{msg}</Text>
+          ) : null}
+
+          {/* Sign In Button */}
+          <Button 
+            title={isLoading ? "Signing in..." : "Sign In"} 
+            onPress={submit} 
+            color={t.colors.primary}
+            style={styles.signInButton}
+            disabled={isLoading}
+          />
+
+          {/* Divider */}
+          <View style={styles.dividerContainer}>
+            <View style={[styles.divider, { backgroundColor: t.colors.border }]} />
+            <Text style={[styles.dividerText, { color: t.colors.textSecondary }]}>or</Text>
+            <View style={[styles.divider, { backgroundColor: t.colors.border }]} />
+          </View>
+
+          {/* Create Account */}
+          <View style={styles.signUpContainer}>
+            <Text style={[styles.signUpText, { color: t.colors.textSecondary }]}>
+              Don't have an account?{' '}
+            </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={[styles.signUpLink, { color: t.colors.primary }]}>
+                Sign up
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Background Accent Elements - Smaller */}
+        <View style={[styles.backgroundAccent, { backgroundColor: t.colors.primary }]} />
+        <View style={[styles.backgroundAccent2, { backgroundColor: t.colors.primary }]} />
+        
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    overflow: 'hidden', 
   },
-  contentWrapper: {
+  keyboardAvoid: {
     flex: 1,
-    paddingHorizontal: 24,
     justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1, 
   },
-  card: {
-    width: '100%',
-    maxWidth: 400,
-    padding: 30, 
-    borderRadius: 12, 
-    elevation: 8, 
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+  headerSection: {
+    paddingHorizontal: 24,
+    paddingBottom: 30,
   },
-  subHeader: {
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  subtitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#6aa84f', 
-    marginBottom: 5,
+    fontWeight: '400',
     textAlign: 'center',
-    letterSpacing: 1.5,
   },
-  header: {
-    fontSize: 26,
-    fontWeight: '900',
-    textAlign: 'center',
-    marginBottom: 20, 
+  formSection: {
+    paddingHorizontal: 24,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  passwordHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1.5,
   },
   forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 10,
+    padding: 2,
   },
   errorText: {
-    color: '#b91c1c',
+    fontSize: 13,
     textAlign: 'center',
-    fontSize: 14,
-    marginTop: 5,
+    marginBottom: 12,
+    fontWeight: '500',
   },
-  backgroundShape: {
+  signInButton: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    paddingHorizontal: 12,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  signUpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  signUpText: {
+    fontSize: 14,
+  },
+  signUpLink: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  backgroundAccent: {
     position: 'absolute',
-    top: -100,
-    left: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150, 
+    top: -30,
+    right: -30,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    opacity: 0.05,
+    zIndex: -1,
+  },
+  backgroundAccent2: {
+    position: 'absolute',
+    bottom: -40,
+    left: -40,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    opacity: 0.03,
+    zIndex: -1,
   },
 });
